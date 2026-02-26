@@ -123,7 +123,7 @@ convert_all_gff_fasta_to_gbk.py	FASTA+GFF → GenBank	.fasta/.fa + .gff3/.gff	.g
 ### Testing
 All scripts have been tested on small example datasets located in the tests/test_data/ directory. These test files cover the basic functionality of each converter. To run the tests yourself, install the package in development mode (pip install -e .) and execute the example commands from the Command Reference using the provided test data. For instance:
 
-##bash
+## bash
 gfc gff3-to-gtf --input-dir tests/test_data --output-dir test_output
 gfc fasta-to-fastq --input-dir tests/test_data --output-dir test_output
 # ... etc.
