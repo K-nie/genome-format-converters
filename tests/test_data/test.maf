@@ -1,0 +1,9 @@
+##maf version=1
+a score=100
+s seq1 0 5 + 10 ACGT-
+s seq2 0 5 + 10 AC-TG
+s seq3 0 5 + 10 AC-TG
+
+a score=50
+s seq1 0 4 + 10 -CGT
+s seq2 0 4 + 10 AC-T

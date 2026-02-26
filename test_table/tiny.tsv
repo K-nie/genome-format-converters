@@ -1,0 +1,7 @@
+seqid	source	type	start	end	score	strand	phase	ID	Name	Parent	product
+ctg1		gene	101	200	.	+	.	gene1	gene1		
+ctg1		mRNA	101	200	.	+	.	mRNA1		gene1	
+ctg1		exon	101	150	.	+	.	exon1		mRNA1	
+ctg1		exon	151	200	.	+	.	exon2		mRNA1	
+ctg1		CDS	101	150	.	+	0	cds1		mRNA1	
+ctg1		CDS	151	200	.	+	1	cds2		mRNA1	

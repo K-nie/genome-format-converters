@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##contig=<ID=ctg1>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1	sample2
+ctg1	5	.	A	T	100	PASS	DP=10	GT	0/1	1/1
+ctg1	10	.	C	G	100	PASS	DP=8	GT	1/1	0/1
+ctg1	15	.	AT	A	100	PASS	DP=5	GT	0/1	1/1

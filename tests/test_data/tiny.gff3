@@ -1,0 +1,7 @@
+##gff-version 3
+ctg1	.	gene	101	200	.	+	.	ID=gene1;Name=gene1
+ctg1	.	mRNA	101	200	.	+	.	ID=mRNA1;Parent=gene1
+ctg1	.	exon	101	150	.	+	.	ID=exon1;Parent=mRNA1
+ctg1	.	exon	151	200	.	+	.	ID=exon2;Parent=mRNA1
+ctg1	.	CDS	101	150	.	+	0	ID=cds1;Parent=mRNA1
+ctg1	.	CDS	151	200	.	+	1	ID=cds2;Parent=mRNA1

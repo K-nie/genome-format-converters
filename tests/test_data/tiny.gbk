@@ -1,0 +1,25 @@
+cat > tiny.gbk << 'EOF'
+LOCUS       ctg1                    200 bp    DNA              UNK 01-JAN-2025
+DEFINITION  test contig.
+ACCESSION   ctg1
+VERSION     ctg1
+SOURCE      .
+  ORGANISM  .
+FEATURES             Location/Qualifiers
+     gene            101..200
+                     /gene="gene1"
+                     /locus_tag="gene1"
+     mRNA            101..200
+                     /locus_tag="gene1"
+                     /product="hypothetical protein"
+     CDS             101..200
+                     /codon_start=1
+                     /product="hypothetical protein"
+                     /protein_id="gnl|test|1"
+ORIGIN
+        1 atcgatcgat cgatcgatcg atcgatcgat cgatcgatcg atcgatcgat cgatcgatcg
+       61 atcgatcgat cgatcgatcg atcgatcgat cgatcgatcg atcgatcgat cgatcgatcg
+      121 atcgatcgat cgatcgatcg atcgatcgat cgatcgatcg atcgatcgat cgatcgatcg
+      181 atcgatcgat cgatcgatcg
+//
+EOF

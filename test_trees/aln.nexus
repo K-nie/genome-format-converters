@@ -1,0 +1,8 @@
+#NEXUS
+Begin Taxa;
+ Dimensions NTax=1;
+ TaxLabels >seq1ACGT-ACGT>seq2ACGTACGT->seq3ACGTACGTG;
+End;
+Begin Trees;
+ Tree tree1=>seq1ACGT-ACGT>seq2ACGTACGT->seq3ACGTACGTG:0.00000;
+End;
