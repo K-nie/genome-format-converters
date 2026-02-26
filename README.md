@@ -1,6 +1,7 @@
-Here's the updated README.md with the new command reference section added after "Usage". I've also updated the Table of Contents to include the new section.
 
-markdown
+## Author: Benjamin Narh-Madey
+## Affiliation: Hittinger Lab, Laboratory of Geenetics University of Wisconsin-Madison
+
 # Genome Format Converters
 
 ![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)
@@ -32,12 +33,8 @@ Each script follows a simple, uniform interface: you point it to an input direct
 ## Installation
 
 Clone the repository:
-<<<<<<< HEAD
-```bash
-=======
 
 bash
->>>>>>> d358144a2a02b65cb03d7e47c3e0728031948e20
 git clone https://github.com/K-nie/genome-format-converters.git
 cd genome-format-converters
 Install the required dependencies:
