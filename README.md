@@ -32,7 +32,12 @@ Each script follows a simple, uniform interface: you point it to an input direct
 ## Installation
 
 Clone the repository:
+<<<<<<< HEAD
 ```bash
+=======
+
+bash
+>>>>>>> d358144a2a02b65cb03d7e47c3e0728031948e20
 git clone https://github.com/K-nie/genome-format-converters.git
 cd genome-format-converters
 Install the required dependencies:
