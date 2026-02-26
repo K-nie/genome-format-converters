@@ -41,7 +41,7 @@ Installation
 Clone the repository:
 
 bash
-git clone https://github.com/your-username/genome-format-converters.git
+git clone https://github.com/K-nie/genome-format-converters.git
 cd genome-format-converters
 Install the required dependencies:
 
