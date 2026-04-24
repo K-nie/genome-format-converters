@@ -5,7 +5,7 @@
 **Contact:** narhmadey@wisc.edu
 
 ![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)
-![Version 0.1.4](https://img.shields.io/badge/version-0.1.4-green.svg)
+![Version 0.1.5](https://img.shields.io/badge/version-0.1.5-green.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 A uniform command-line toolkit for converting common bioinformatics file
