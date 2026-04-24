@@ -1,8 +1,0 @@
-#NEXUS
-Begin Taxa;
- Dimensions NTax=1;
- TaxLabels 150EOF;
-End;
-Begin Trees;
- Tree tree1=150EOF:0.00000;
-End;

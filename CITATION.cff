@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "genome-format-converters: a uniform command-line toolkit for common bioinformatics file formats"
+version: "0.1.5"
+date-released: "2026-04-24"
+authors:
+  - family-names: "Narh-Madey"
+    given-names: "Benjamin"
+    email: "narhmadey@wisc.edu"
+    affiliation: "Laboratory of Genetics (Hittinger Lab), Wisconsin Energy Institute, University of Wisconsin-Madison"
+license: "MIT"
+repository-code: "https://github.com/K-nie/genome-format-converters"
+url: "https://github.com/K-nie/genome-format-converters"
+keywords:
+  - bioinformatics
+  - genomics
+  - file-formats
+  - eigenstrat
+  - saccharomycotina
+  - phylogenomics

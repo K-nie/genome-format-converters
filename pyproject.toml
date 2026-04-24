@@ -4,32 +4,62 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genome-format-converters"
-version = "0.1.1"
-description = "A collection of Python scripts for converting common bioinformatics file formats"
+version = "0.1.5"
+description = "A uniform command-line toolkit for converting common bioinformatics file formats (GFF3, GTF, BED, GenBank, FASTA, FASTQ, QUAL, BAM, VCF, MAF, MUMmer delta, EIGENSTRAT, phylogenetic trees)."
 readme = "README.md"
 authors = [
-    {name = "Benjamin Narh-Madey", email = "narhmadey@swisc.edu"},
+    {name = "Benjamin Narh-Madey", email = "narhmadey@wisc.edu"},
 ]
 license = {text = "MIT"}
+keywords = [
+    "bioinformatics",
+    "genomics",
+    "file-formats",
+    "saccharomycotina",
+    "phylogenomics",
+    "population-genetics",
+    "eigenstrat",
+    "vcf",
+    "gff3",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 dependencies = [
-    "biopython>=1.78",
-    "pandas>=1.0",
-    "pysam>=0.16",
+    "biopython>=1.78,<2",
+    "pandas>=1.0,<3",
+    "bcbio-gff>=0.7.0,<1",
+    # pysam wraps htslib; no upstream Windows wheels on PyPI, so we mark it
+    # as required only on Linux and macOS. Windows users get the pure-Python
+    # subset of subcommands (~20/30) and a clear error if they invoke a
+    # VCF/BAM/BCF converter without WSL or a conda-forge pysam build.
+    "pysam>=0.16,<1; platform_system != 'Windows'",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7",
+    "pytest-cov>=4",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/K-nie/genome-format-converters"
-"Bug Tracker" = "https://github.com/K-nie/genome-format-converters/issues"
+"Issues" = "https://github.com/K-nie/genome-format-converters/issues"
+"Changelog" = "https://github.com/K-nie/genome-format-converters/blob/main/CHANGELOG.md"
 
 [project.scripts]
 gfc = "genome_format_converters.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

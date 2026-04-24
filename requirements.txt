@@ -1,6 +1,4 @@
-dependencies = [
-    "biopython>=1.78",
-    "pandas>=1.0",
-    "pysam>=0.16",
-    "bcbio-gff>=0.7.0",
-]
+biopython>=1.78,<2
+pandas>=1.0,<3
+bcbio-gff>=0.7.0,<1
+pysam>=0.16,<1; platform_system != 'Windows'

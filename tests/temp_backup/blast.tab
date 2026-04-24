@@ -1,4 +1,0 @@
-cat > blast.tab << 'EOF'
-query1	ref1	95.0	100	5	0	1	100	10	110	1e-30	300
-query1	ref2	80.0	50	10	0	20	70	200	250	1e-10	150
-EOF

@@ -1,6 +1,0 @@
-##gff-version 3
-##sequence-region ctg1 1 200
-ctg1	annotation	remark	1	200	.	.	.	accessions=ctg1;data_file_division=UNK;date=01-JAN-2025;molecule_type=DNA;organism=.;source=;taxonomy=
-ctg1	feature	gene	101	200	.	+	.	gene=gene1;locus_tag=gene1
-ctg1	feature	mRNA	101	200	.	+	.	locus_tag=gene1;product=hypothetical protein
-ctg1	feature	CDS	101	200	.	+	0	codon_start=1;product=hypothetical protein;protein_id=gnl%7Ctest%7C1

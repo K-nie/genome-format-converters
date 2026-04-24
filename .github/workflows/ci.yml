@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Full matrix: install pysam, run the complete test suite. Linux + macOS.
+  test-full:
+    name: pytest · full · ${{ matrix.os }} · py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install with test extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+      - name: Run full pytest
+        run: pytest -v
+
+  # Windows: pysam isn't on PyPI for Windows, so install skips it. We run
+  # only the tests that don't touch VCF/BAM/BCF subcommands. The rest of
+  # the pure-Python CLI (GFF3, GTF, BED, FASTA/FASTQ, Stockholm, HMMER,
+  # Orthogroups, trees) must still work.
+  test-windows:
+    name: pytest · windows · py${{ matrix.python-version }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install without pysam (Windows path)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+      - name: Run Windows-compatible tests only
+        # Any test that doesn't import a VCF/BAM converter runs fine.
+        # Pytest's `-k` filter excludes the pysam-dependent suite.
+        run: pytest -v -k "not vcf and not bam and not consensus"
+
+  build:
+    name: build sdist + wheel
+    runs-on: ubuntu-latest
+    needs: [test-full, test-windows]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

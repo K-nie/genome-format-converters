@@ -1,42 +1,52 @@
 #!/usr/bin/env python3
-"""
-Extract protein sequences from GFF3 + FASTA.
-Files are paired by stem (common prefix) with optional suffix stripping.
+"""Extract protein sequences from paired GFF3 + FASTA input.
+
+For each mRNA (or transcript-like feature) we collect its CDS children, sort
+them in biological order (ascending by start on the + strand, descending by
+end on the - strand), concatenate the nucleotide spans, trim the phase of
+the leading CDS, and translate once. Single-exon / yeast-style genes fall
+out of this as a degenerate case (one CDS per mRNA).
 """
 
-import sys
 from pathlib import Path
 from collections import defaultdict
+from typing import Dict, List, Optional, Tuple
+
 from Bio import SeqIO
+from Bio.Seq import Seq
 from BCBio import GFF
 
-FASTA_EXTS = [".fasta", ".fa", ".fna", ".fas"]
-GFF_EXTS = [".gff3", ".gff"]
-SUFFIX_STRIPS = [".final", "_final", "final"]
+from ._common import log_info, log_warn, prepare_output_dir
 
-def _strip_suffixes(stem: str, suffixes: list) -> str:
+_FASTA_EXTS = [".fasta", ".fa", ".fna", ".fas"]
+_GFF_EXTS = [".gff3", ".gff"]
+_SUFFIX_STRIPS = [".final", "_final", "final"]
+_TRANSCRIPT_TYPES = {"mRNA", "transcript"}
+
+
+def _strip_suffixes(stem: str, suffixes: List[str]) -> str:
     for suf in suffixes:
         if stem.endswith(suf):
-            stem = stem[: -len(suf)]
-            break
+            return stem[: -len(suf)]
     return stem
 
-def _find_pairs(input_dir: Path):
-    fastas = {}
-    for ext in FASTA_EXTS:
+
+def _find_pairs(input_dir: Path) -> List[Tuple[str, Path, Path]]:
+    fastas: Dict[str, Path] = {}
+    for ext in _FASTA_EXTS:
         for f in input_dir.glob(f"*{ext}"):
             fastas[f.stem] = f
-    gffs = {}
-    for ext in GFF_EXTS:
+
+    gffs: Dict[str, Path] = {}
+    for ext in _GFF_EXTS:
         for f in input_dir.glob(f"*{ext}"):
             gffs[f.stem] = f
 
-    stripped_map = {}
+    stripped_map: Dict[str, Path] = {}
     for stem, f in gffs.items():
-        stripped = _strip_suffixes(stem, SUFFIX_STRIPS)
-        stripped_map[stripped] = f
+        stripped_map[_strip_suffixes(stem, _SUFFIX_STRIPS)] = f
 
-    pairs = []
+    pairs: List[Tuple[str, Path, Path]] = []
     for stem, fasta in fastas.items():
         if stem in stripped_map:
             pairs.append((stem, fasta, stripped_map[stem]))
@@ -44,59 +54,99 @@ def _find_pairs(input_dir: Path):
             pairs.append((stem, fasta, gffs[stem]))
     return pairs
 
-def _process_cds(rec, feature, out_handle):
-    """Extract and translate a single CDS feature."""
-    if feature.type != "CDS":
+
+def _collect_cds(feature) -> List:
+    """Flatten a feature's sub-tree and return only CDS children."""
+    out = []
+    stack = [feature]
+    while stack:
+        f = stack.pop()
+        if f.type == "CDS":
+            out.append(f)
+        stack.extend(f.sub_features)
+    return out
+
+
+def _translate_transcript(rec, transcript_feature, out_handle) -> None:
+    """Concatenate CDS children of one transcript, translate, write FASTA."""
+    cds_list = _collect_cds(transcript_feature)
+    if not cds_list:
         return
-    # Extract the nucleotide sequence
-    seq = feature.extract(rec.seq)
-    if not seq:
-        # This can happen if coordinates lie outside the available sequence
-        sys.stderr.write(
-            f"Warning: Empty sequence for CDS {feature.qualifiers.get('ID', ['?'])[0]} "
-            f"at {rec.id}:{feature.location.start+1}-{feature.location.end}. "
-            f"Skipping.\n"
+
+    strand = transcript_feature.location.strand
+    # Sort + strand by start ascending, - strand by start descending. A CDS
+    # on the '.' strand is unusual for a coding feature; default to + ordering.
+    cds_list.sort(key=lambda f: int(f.location.start), reverse=(strand == -1))
+
+    pieces = []
+    for cds in cds_list:
+        piece = cds.extract(rec.seq)
+        if piece:
+            pieces.append(str(piece))
+    if not pieces:
+        log_warn(
+            f"Empty CDS concatenation for "
+            f"{transcript_feature.qualifiers.get('ID', ['?'])[0]} on {rec.id}; "
+            "skipping."
         )
         return
-    # Apply phase (0,1,2) – trim from start
-    phase = int(feature.qualifiers.get('phase', [0])[0])
-    if phase:
-        seq = seq[phase:]
-    # Translate to protein (do not stop at internal stops)
-    prot = seq.translate(to_stop=False)
-    # Write to output
-    out_handle.write(f">{feature.qualifiers.get('ID', ['CDS'])[0]}\n")
-    out_handle.write(f"{str(prot)}\n")
 
-def _process_features(rec, feature, out_handle):
-    """Recursively search for CDS features."""
-    _process_cds(rec, feature, out_handle)
+    joined = Seq("".join(pieces))
+    # Phase of the first CDS (already in 5'→3' order after the sort above).
+    leading_phase_raw = cds_list[0].qualifiers.get("phase", ["0"])[0]
+    try:
+        leading_phase = int(leading_phase_raw)
+    except (TypeError, ValueError):
+        leading_phase = 0
+    if leading_phase in (1, 2):
+        joined = joined[leading_phase:]
+
+    # Trim trailing partial codon so Biopython doesn't warn.
+    overflow = len(joined) % 3
+    if overflow:
+        joined = joined[:-overflow]
+
+    protein = joined.translate(to_stop=False)
+    fid = transcript_feature.qualifiers.get("ID", ["CDS"])[0]
+    out_handle.write(f">{fid}\n{str(protein)}\n")
+
+
+def _walk(rec, feature, out_handle) -> None:
+    if feature.type in _TRANSCRIPT_TYPES:
+        _translate_transcript(rec, feature, out_handle)
+        return
+    # Some annotations attach CDS directly under `gene`; translate that
+    # as if the gene were a single-transcript feature.
+    if feature.type == "gene" and not any(
+        sub.type in _TRANSCRIPT_TYPES for sub in feature.sub_features
+    ):
+        _translate_transcript(rec, feature, out_handle)
+        return
     for sub in feature.sub_features:
-        _process_features(rec, sub, out_handle)
+        _walk(rec, sub, out_handle)
 
-def _convert_pair(fasta_file: Path, gff_file: Path, out_handle):
-    """Extract and translate all CDS from one pair, writing to out_handle."""
-    # Load genome
+
+def _convert_pair(fasta_file: Path, gff_file: Path, out_handle) -> None:
     genome = SeqIO.to_dict(SeqIO.parse(str(fasta_file), "fasta"))
-    # Parse GFF with the genome dictionary so that rec.seq is available
     with open(gff_file) as in_handle:
         for rec in GFF.parse(in_handle, base_dict=genome):
             for feature in rec.features:
-                _process_features(rec, feature, out_handle)
+                _walk(rec, feature, out_handle)
 
-def batch_convert(input_dir: str, output_dir: str) -> None:
-    """For each GFF3/FASTA pair, produce a protein FASTA file."""
+
+def batch_convert(input_dir: str, output_dir: str,
+                  force: bool = False,
+                  pattern: Optional[str] = None) -> None:
     in_path = Path(input_dir)
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+    out_path = prepare_output_dir(output_dir, force=force)
 
     pairs = _find_pairs(in_path)
     if not pairs:
-        print("No matching GFF3/FASTA pairs found.")
+        log_warn("No matching GFF3 / FASTA pairs found (matched by stem).")
         return
 
     for stem, fasta, gff in pairs:
         out_file = out_path / f"{stem}.faa"
-        print(f"Processing {stem}: {fasta.name} + {gff.name} -> {out_file.name}")
-        with open(out_file, 'w') as out_handle:
+        log_info(f"Processing {stem}: {fasta.name} + {gff.name} -> {out_file.name}")
+        with open(out_file, "w") as out_handle:
             _convert_pair(fasta, gff, out_handle)
