@@ -1,0 +1,52 @@
+# Conda environment for benchmarking gfc against common bioinformatics CLIs.
+# All competitors come from bioconda where available; avoid pip for anything
+# that wraps a C library (pysam, pyhmmer) so builds are reproducible.
+
+name: gfc-bench
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  # --- core --------------------------------------------------------------
+  - python=3.11
+  - pip
+
+  # --- gfc runtime deps (let pip install gfc itself) --------------------
+  - biopython>=1.78
+  - pandas>=1.0
+  - pysam>=0.22
+  - bcbio-gff>=0.7
+
+  # --- benchmark harness deps -------------------------------------------
+  - psutil>=5.9            # cross-platform peak-RSS measurement
+  - matplotlib>=3.8        # figures 3 + 4
+  - seaborn>=0.13          # pretty defaults for the matplotlib plots
+  - tabulate>=0.9          # feature matrix Table
+
+  # --- competitors -------------------------------------------------------
+  - bcftools=1.19
+  - samtools=1.19
+  - htslib=1.19
+  - plink2                 # binary .bed/.bim/.fam reference
+  - seqkit                 # FASTA / FASTQ reference
+  - emboss                 # seqret (FASTA + GFF → GenBank)
+  - ucsc-gtftogenepred     # GTF → BED12 reference (chained with UCSC)
+  - ucsc-genepredtobed
+  - hmmer                  # for realistic tblout fixtures
+  - agat                   # Perl, GFF3 ↔ GTF reference
+  # - eigensoft            # convertf — not in bioconda on all arches.
+  #   Install from source into /opt/eigensoft or use a fallback script.
+  # - pileupcaller         # pseudohaploid reference. Install from cabal /
+  #   stack; see docs/BENCHMARK_PLAN.md for instructions.
+
+  - pip:
+      - -e ../..           # install gfc itself in editable mode
+
+# ---------------------------------------------------------------------------
+# After env creation:
+#   mamba env create -f benchmarks/environment.yml
+#   conda activate gfc-bench
+#   gfc --version
+#   bash benchmarks/run_bench.sh
