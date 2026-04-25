@@ -1,0 +1,47 @@
+{
+  "title": "gfc: a uniform command-line toolkit for common bioinformatics file-format conversions",
+  "description": "<p><strong>genome-format-converters (gfc)</strong> is a Python command-line toolkit that exposes 30 bioinformatics file-format converters under a single uniform interface (<code>gfc &lt;subcommand&gt;</code>). Coverage spans annotation (GFF3, GTF, BED, BED12, GenBank), sequence (FASTA, FASTQ, QUAL, Stockholm), alignment/mapping (BAM, SAM, CRAM, MAF, MUMmer delta, BLAST outfmt 6, HMMER tblout), variant (VCF, BCF, EIGENSTRAT diploid and pseudohaploid, PLINK binary), orthology (OrthoFinder orthogroups), and phylogenetic tree formats. Ships with a full pytest suite, Linux/macOS/Windows CI, a reviewer-replayable benchmark harness, and a JOSS paper draft.</p>",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
+  "keywords": [
+    "bioinformatics",
+    "genomics",
+    "file formats",
+    "phylogenomics",
+    "population genetics",
+    "EIGENSTRAT",
+    "PLINK",
+    "Saccharomycotina",
+    "Y1000+",
+    "command-line tool",
+    "Python"
+  ],
+  "creators": [
+    {
+      "name": "Narh-Madey, Benjamin",
+      "affiliation": "Laboratory of Genetics, Wisconsin Energy Institute, University of Wisconsin-Madison, USA",
+      "orcid": "0000-0000-0000-0000"
+    },
+    {
+      "name": "Hittinger, Chris Todd",
+      "affiliation": "Laboratory of Genetics, Wisconsin Energy Institute, University of Wisconsin-Madison, USA",
+      "orcid": "0000-0000-0000-0000"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Hittinger, Chris Todd",
+      "type": "Supervisor",
+      "affiliation": "Laboratory of Genetics, Wisconsin Energy Institute, University of Wisconsin-Madison, USA"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/K-nie/genome-format-converters",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ],
+  "communities": []
+}

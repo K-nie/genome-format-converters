@@ -11,6 +11,9 @@ authors:
 license: "MIT"
 repository-code: "https://github.com/K-nie/genome-format-converters"
 url: "https://github.com/K-nie/genome-format-converters"
+# Replace with the Zenodo DOI once the release is archived. See
+# paper/README.md § Zenodo setup.
+# doi: 10.5281/zenodo.XXXXXXX
 keywords:
   - bioinformatics
   - genomics
