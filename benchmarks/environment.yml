@@ -41,12 +41,14 @@ dependencies:
   # - pileupcaller         # pseudohaploid reference. Install from cabal /
   #   stack; see docs/BENCHMARK_PLAN.md for instructions.
 
-  - pip:
-      - -e ../..           # install gfc itself in editable mode
+# Note: gfc itself is installed via `pip install -e <repo>` as a separate
+# step (see benchmarks/condor/bootstrap.sh) to keep path resolution
+# unambiguous when this yml is consumed from a cluster directory.
 
 # ---------------------------------------------------------------------------
 # After env creation:
 #   mamba env create -f benchmarks/environment.yml
 #   conda activate gfc-bench
+#   pip install -e <path-to-gfc-repo-root>
 #   gfc --version
 #   bash benchmarks/run_bench.sh

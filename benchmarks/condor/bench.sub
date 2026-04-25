@@ -1,0 +1,42 @@
+# HTCondor submit file for the gfc benchmark run.
+#
+# Prerequisite: bootstrap.sh already ran on the submit host, so the
+# gfc-bench conda env exists at ~/miniconda3/envs/gfc-bench (or the
+# equivalent miniforge3 location).
+#
+# Submit with:
+#     cd <repo>/benchmarks/condor && condor_submit bench.sub
+
+universe        = vanilla
+executable      = run_on_condor.sh
+
+# Propagate the submitter's environment so conda / HOME / PATH resolve
+# correctly when the execute host activates the gfc-bench env.
+getenv          = True
+
+# Shared-FS execute: no file transfer, just cd to the repo.
+should_transfer_files = NO
+
+# Run everything from benchmarks/condor/ on the shared filesystem so
+# relative paths in run_on_condor.sh + results/ resolve the same way the
+# submit host sees them.
+initialdir      = $ENV(PWD)
+
+# Resources — 1000G chr22 VCF + Y1000+ slice together stay well under 16 GB
+# and 50 GB disk. Tune up only if a paper-grade 1154-species run is added.
+request_cpus    = 4
+request_memory  = 16 GB
+request_disk    = 50 GB
+
+# Logs land in benchmarks/condor/logs/ (pre-created by bootstrap.sh).
+log             = logs/bench.$(ClusterId).log
+output          = logs/bench.$(ClusterId).out
+error           = logs/bench.$(ClusterId).err
+
+# Let the job run up to 24h; override at submit time with
+# `+MaxWallTimeMins = <minutes>` if your cluster uses a soft ceiling.
++JobDurationCategory = "Long"
+
+# One job only — all 8 benchmark tasks run sequentially on the same
+# execute host so cross-task timings stay on identical hardware.
+queue 1
