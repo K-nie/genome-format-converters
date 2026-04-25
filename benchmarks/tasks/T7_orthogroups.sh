@@ -47,6 +47,25 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         >> "$out"
 done
 
-# TODO: wire a handwritten Python reference — the point is to show that gfc
-# matches "what the user would write themselves" while staying under one CLI.
+# ---------- handwritten Python reference ------------------------------------
+# benchmarks/refs/orthogroups_ref.py is a minimal biopython-based
+# reimplementation. It's the "what a careful bioinformatician would write
+# in an hour" baseline — the gfc→ref delta measures the CLI wrapper
+# overhead, not algorithmic differences.
+ref_script="$repo/benchmarks/refs/orthogroups_ref.py"
+if [[ -x "$ref_script" || -f "$ref_script" ]]; then
+    py_version="$(python --version 2>&1 | cut -d' ' -f2)"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/ref_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T7" --tool "py-ref" --version "$py_version" \
+            --replicate "$rep" \
+            --cmd "python '$ref_script' --orthogroups '$fixture_dir/Orthogroups.tsv' \
+                   --fasta-dir '$fixture_dir' --output-dir '$out_dir'" \
+            --notes "handwritten biopython baseline" \
+            >> "$out"
+    done
+fi
+
 echo "[done] T7 rows written to $out" >&2
