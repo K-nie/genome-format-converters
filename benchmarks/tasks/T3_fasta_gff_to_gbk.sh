@@ -9,8 +9,17 @@ task="T3_fasta_gff_to_gbk"
 out="$repo/benchmarks/results/raw/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
-input_dir="$repo/tests/test_data"
-: "${GFC_BENCH_INPUT_DIR:=$input_dir}"
+# Stage 1: prefer the committed Y1000+ tRNA-scan slice over the tiny
+# fixture when present, regardless of what run_on_condor.sh exported into
+# GFC_BENCH_INPUT_DIR (which it sets to the 1kg VCF dir for T1/T2/T8).
+y1000_dir="$repo/benchmarks/data/y1000plus"
+if compgen -G "$y1000_dir/*.fasta" >/dev/null 2>&1; then
+    GFC_BENCH_INPUT_DIR="$y1000_dir"
+    notes_default="20-species Y1000+ tRNA-scan slice"
+else
+    GFC_BENCH_INPUT_DIR="${GFC_BENCH_INPUT_DIR:-$repo/tests/test_data}"
+    notes_default="tiny fixture (no Y1000+ slice present)"
+fi
 : "${GFC_BENCH_REPLICATES:=5}"
 
 bench_dir="/tmp/gfc_bench_${task}"
@@ -25,7 +34,7 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         --task "T3" --tool "gfc" --version "$gfc_version" --replicate "$rep" \
         --cmd "gfc fasta-gff-to-gbk --input-dir '$GFC_BENCH_INPUT_DIR' \
                --output-dir '$out_dir' --force" \
-        --notes "20-species Y1000+ slice when available" \
+        --notes "$notes_default" \
         >> "$out"
 done
 

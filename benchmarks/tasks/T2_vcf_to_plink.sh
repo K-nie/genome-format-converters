@@ -42,7 +42,7 @@ if command -v plink2 >/dev/null 2>&1; then
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "plink2" --version "$plink2_version" \
             --replicate "$rep" \
-            --cmd "plink2 --vcf '$vcf_input' --allow-extra-chr --make-bed \
+            --cmd "plink2 --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
                    --out '$out_dir/$stem' --silent" \
             >> "$out"
     done
@@ -62,7 +62,7 @@ if command -v plink >/dev/null 2>&1 && plink --version 2>&1 | grep -q 'PLINK v1'
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "plink1.9" --version "$plink_version" \
             --replicate "$rep" \
-            --cmd "plink --vcf '$vcf_input' --allow-extra-chr --make-bed \
+            --cmd "plink --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
                    --out '$out_dir/$stem' --silent" \
             >> "$out"
     done

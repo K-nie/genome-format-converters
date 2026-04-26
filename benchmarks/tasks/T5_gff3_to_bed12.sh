@@ -8,8 +8,13 @@ task="T5_gff3_to_bed12"
 out="$repo/benchmarks/results/raw/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
-input_dir="$repo/tests/test_data"
-: "${GFC_BENCH_INPUT_DIR:=$input_dir}"
+# Stage 1: prefer the committed Y1000+ tRNA-scan slice when present.
+y1000_dir="$repo/benchmarks/data/y1000plus"
+if compgen -G "$y1000_dir/*.gff3" >/dev/null 2>&1; then
+    GFC_BENCH_INPUT_DIR="$y1000_dir"
+else
+    GFC_BENCH_INPUT_DIR="${GFC_BENCH_INPUT_DIR:-$repo/tests/test_data}"
+fi
 : "${GFC_BENCH_REPLICATES:=5}"
 
 bench_dir="/tmp/gfc_bench_${task}"

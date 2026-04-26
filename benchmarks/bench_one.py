@@ -7,9 +7,12 @@ concatenatable.
 
 Measurements:
   wall_s       wall-clock seconds via ``time.perf_counter()``.
-  peak_rss_mb  peak resident set size of the child process *and all its
-               descendants*, polled every 50 ms via ``psutil``. Falls back
-               to 0 if ``psutil`` isn't available.
+  peak_rss_mb  ``ru_maxrss`` from the child process via ``os.wait4``. This
+               is the kernel-tracked peak RSS the OS records for the
+               specific child, not a polled snapshot of the live RSS — so
+               mmap-heavy tools (plink2) report what they actually
+               resident-set, not what they mmap'd. Units: KB on Linux,
+               bytes on macOS / *BSD; normalised to bytes here.
 
 Schema (matches benchmarks/README.md):
   task tool version replicate wall_s peak_rss_mb exit_code correct notes
@@ -17,64 +20,39 @@ Schema (matches benchmarks/README.md):
 from __future__ import annotations
 
 import argparse
-import shlex
+import os
+import resource
 import subprocess
 import sys
-import threading
 import time
-from typing import Optional
-
-try:
-    import psutil  # type: ignore
-except ImportError:  # pragma: no cover
-    psutil = None
-
-
-def _poll_peak_rss(pid: int, stop_event: threading.Event,
-                   peak: dict, interval_s: float = 0.05) -> None:
-    """Background thread: poll the process tree's RSS every `interval_s`
-    seconds, tracking the highest value seen."""
-    if psutil is None:
-        return
-    try:
-        proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        return
-    while not stop_event.is_set():
-        try:
-            total = proc.memory_info().rss
-            for child in proc.children(recursive=True):
-                try:
-                    total += child.memory_info().rss
-                except psutil.NoSuchProcess:
-                    continue
-            if total > peak["rss"]:
-                peak["rss"] = total
-        except psutil.NoSuchProcess:
-            break
-        time.sleep(interval_s)
 
 
 def run_once(cmd: str) -> tuple[float, int, int]:
-    """Run `cmd` under a shell. Return (wall_seconds, peak_rss_bytes, exit_code)."""
-    peak = {"rss": 0}
-    stop_event = threading.Event()
+    """Run `cmd` under a shell. Return (wall_seconds, peak_rss_bytes, exit_code).
 
+    Uses ``os.wait4`` so we get the rusage of the specific child, not the
+    accumulated rusage of all children since process start (which is what
+    ``resource.getrusage(RUSAGE_CHILDREN)`` would give).
+    """
     start = time.perf_counter()
     # shell=True so the command string can use pipes / redirects when
     # tasks need them (e.g. `bcftools view | awk | gzip > out`).
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
-    poller = threading.Thread(
-        target=_poll_peak_rss, args=(proc.pid, stop_event, peak)
+    proc = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
-    poller.start()
-
-    rc = proc.wait()
-    stop_event.set()
-    poller.join(timeout=1.0)
+    _pid, status, ru = os.wait4(proc.pid, 0)
     elapsed = time.perf_counter() - start
-    return elapsed, peak["rss"], rc
+    rc = os.waitstatus_to_exitcode(status)
+    # Tell Popen the child is reaped so its destructor doesn't complain.
+    proc.returncode = rc
+
+    # ru_maxrss units differ by platform: KB on Linux, bytes on macOS/BSD.
+    if sys.platform == "darwin" or sys.platform.startswith("freebsd"):
+        peak_rss_bytes = ru.ru_maxrss
+    else:
+        peak_rss_bytes = ru.ru_maxrss * 1024
+
+    return elapsed, peak_rss_bytes, rc
 
 
 def main() -> None:

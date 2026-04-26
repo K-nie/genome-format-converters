@@ -46,74 +46,42 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         >> "$out"
 done
 
-# ---------- tool 2: handwritten bcftools + awk + python ---------------------
-# Hand-script that reproduces the EIGENSTRAT .geno encoding from a VCF by
-# piping bcftools through awk. This is the "what a careful bioinformatician
-# would write in an afternoon" comparison.
-#
-# Enabled when `bcftools` is on PATH. Skipped otherwise — paper numbers
-# should come from a run that has it.
-if command -v bcftools >/dev/null 2>&1; then
-    bcftools_version="$(bcftools --version | head -1 | cut -d' ' -f2)"
-    handscript="$repo/benchmarks/tasks/_T1_handscript.sh"
-    cat > "$handscript" <<'EOF'
-#!/usr/bin/env bash
-# Hand-script: bcftools → awk → .geno / .snp / .ind. Not a real EIGENSTRAT
-# converter — just a proof-of-speed baseline.
-set -euo pipefail
-vcf="$1"; outdir="$2"
-mkdir -p "$outdir"
-stem="$(basename "$vcf" .vcf)"
-stem="${stem%.vcf.gz}"
-bcftools view -m2 -M2 -v snps "$vcf" \
-  | bcftools norm -m+ \
-  | awk -F'\t' '
-      BEGIN { OFS="\t" }
-      /^#CHROM/ {
-          for (i = 10; i <= NF; i++) samples[i] = $i
-          print "" > "/dev/null"
-          next
-      }
-      /^##/ { next }
-      {
-          printf "%s_%s\t%s\t0.0\t%s\t%s\t%s\n", $1, $2, $1, $2, $4, $5 > snp
-          line = ""
-          for (i = 10; i <= NF; i++) {
-              split($i, gt, /[\/|]/)
-              a = gt[1]; b = gt[2]
-              if (a == "." || b == ".") { line = line "9"; continue }
-              n = (a == "0") + (b == "0")
-              line = line n
-          }
-          print line > geno
-      }
-  ' snp="$outdir/$stem.snp" geno="$outdir/$stem.geno"
-bcftools query -l "$vcf" | awk '{ print $1"\tU\t"$1 }' > "$outdir/$stem.ind"
-EOF
-    chmod +x "$handscript"
-
+# ---------- tool 2: EIGENSOFT convertf (Stage 3 reference) ------------------
+# convertf is the canonical reference for VCF → EIGENSTRAT. It lives in
+# DReichLab/EIG, is not on bioconda, and ships via the Dockerfile builder
+# stage (see benchmarks/Dockerfile). When it is on PATH, run it through a
+# par-file generated from the input VCF; plink2 stages the VCF as PED first.
+if command -v convertf >/dev/null 2>&1; then
+    cf_version="$(convertf 2>&1 | head -1 | tr -s ' ' | cut -d' ' -f2 || echo unknown)"
+    vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
+    stem="$(basename "$vcf_input")"
+    stem="${stem%.vcf.gz}"; stem="${stem%.vcf}"; stem="${stem%.bcf}"
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
-        out_dir="$bench_dir/hand_rep${rep}"
-        vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
+        out_dir="$bench_dir/convertf_rep${rep}"
+        mkdir -p "$out_dir"
+        # Single shell command so bench_one.py times the canonical pipeline,
+        # not just convertf in isolation.
         python "$repo/benchmarks/bench_one.py" \
-            --task "T1" --tool "bcftools+awk" --version "$bcftools_version" \
+            --task "T1" --tool "convertf" --version "$cf_version" \
             --replicate "$rep" \
-            --cmd "bash '$handscript' '$vcf_input' '$out_dir'" \
-            --notes "hand-script baseline" \
+            --cmd "plink2 --vcf '$vcf_input' --threads 1 --allow-extra-chr \
+                          --recode --out '$out_dir/$stem' --silent && \
+                   printf 'genotypename:    %s.ped\nsnpname:         %s.map\nindivname:       %s.ped\noutputformat:    EIGENSTRAT\ngenotypeoutname: %s.geno\nsnpoutname:      %s.snp\nindivoutname:    %s.ind\n' \
+                          '$out_dir/$stem' '$out_dir/$stem' '$out_dir/$stem' \
+                          '$out_dir/$stem' '$out_dir/$stem' '$out_dir/$stem' \
+                          > '$out_dir/par.PED.EIGENSTRAT' && \
+                   convertf -p '$out_dir/par.PED.EIGENSTRAT'" \
+            --notes "via plink2 PED → convertf EIGENSTRAT" \
             >> "$out"
     done
 else
-    echo "[skip] T1 bcftools+awk baseline (bcftools not on PATH)" >&2
+    echo "[skip] T1 convertf (EIGENSOFT convertf not on PATH; build via Dockerfile)" >&2
 fi
 
-# ---------- tool 3: EIGENSOFT convertf --------------------------------------
-# TODO: wire up when eigensoft/convertf is available. convertf takes a
-# parameter file (par) pointing at .ped/.map or .pedind; construct those
-# from the VCF via plink2 --vcf --recode, then invoke convertf.
-#
-# if command -v convertf >/dev/null 2>&1; then
-#     ... populate par file ...
-#     python bench_one.py --task T1 --tool convertf --version "$cf_ver" ...
-# fi
+# Removed in Stage 1 (bench/stage1-fairness): the bcftools+awk hand-script
+# baseline previously here. Its awk encoded ref-allele dosage instead of
+# variant-allele dosage, so the .geno output was inverted relative to the
+# EIGENSTRAT spec — the comparison was therefore meaningless. convertf is
+# the correct reference.
 
 echo "[done] T1 rows written to $out" >&2

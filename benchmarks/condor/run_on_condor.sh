@@ -89,8 +89,11 @@ else
     echo "[info] VCF tasks will run on bundled tiny.vcf fixture"
 fi
 
-# 5 replicates by default; set GFC_BENCH_REPLICATES in env to override.
-export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-5}"
+# 10 replicates by default (Stage 1 audit: n=3 was too few for SD-based
+# claims given the ~1% CV on T1/T2). Set GFC_BENCH_REPLICATES in env to
+# override. Tasks > 30s use n=10; short tasks (T3/T4/T5) absorb startup
+# jitter at higher n but n=10 is the floor.
+export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-10}"
 echo "[info] replicates per tool per task: $GFC_BENCH_REPLICATES"
 
 # ---- run all tasks ----------------------------------------------------
