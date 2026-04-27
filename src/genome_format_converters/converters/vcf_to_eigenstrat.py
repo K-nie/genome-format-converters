@@ -94,7 +94,15 @@ def _convert_file(in_file: Path, out_prefix: Path,
     skipped_maf = 0
     skipped_missing = 0
 
-    with pysam.VariantFile(str(in_file)) as vcf:
+    # Stream `.geno` and `.snp` writes inside the read loop so chr22-scale
+    # inputs don't accumulate in RAM. Only the `also_plink` path needs the
+    # rows kept in memory (write_plink_sidecar consumes them after the loop).
+    snp_rows: list = [] if also_plink else None
+    geno_rows: list = [] if also_plink else None
+
+    with pysam.VariantFile(str(in_file)) as vcf, \
+            open(geno_path, "w") as geno_fh, \
+            open(snp_path, "w") as snp_fh:
         samples = list(vcf.header.samples)
         contigs = set(vcf.header.contigs.keys())
 
@@ -103,9 +111,6 @@ def _convert_file(in_file: Path, out_prefix: Path,
         validate_map_coverage("chrom-map", chrom_map, contigs, strict_maps)
 
         write_ind(ind_path, samples, pop_map, sex_map)
-
-        snp_rows = []
-        geno_rows = []
 
         for rec in vcf:
             if not rec.alts or len(rec.alts) != 1:
@@ -158,16 +163,17 @@ def _convert_file(in_file: Path, out_prefix: Path,
             emitted_chrom = resolve_chrom(rec.chrom, chrom_map, default_chrom)
             morgans = morgans_for(rec.chrom, rec.pos, gmap)
 
-            snp_rows.append(
-                (snp_id, emitted_chrom, morgans, rec.pos, major, minor)
+            snp_fh.write(
+                f"{snp_id}\t{emitted_chrom}\t{morgans}\t{rec.pos}\t{major}\t{minor}\n"
             )
-            geno_rows.append(row)
-            kept += 1
+            geno_fh.write(row + "\n")
 
-        with open(geno_path, "w") as geno_fh, open(snp_path, "w") as snp_fh:
-            for (snp_id, chrom, morgans, bp, major, minor), row in zip(snp_rows, geno_rows):
-                snp_fh.write(f"{snp_id}\t{chrom}\t{morgans}\t{bp}\t{major}\t{minor}\n")
-                geno_fh.write(row + "\n")
+            if also_plink:
+                snp_rows.append(
+                    (snp_id, emitted_chrom, morgans, rec.pos, major, minor)
+                )
+                geno_rows.append(row)
+            kept += 1
 
     log_info(
         f"{in_file.name}: {kept} biallelic SNPs written; skipped "
