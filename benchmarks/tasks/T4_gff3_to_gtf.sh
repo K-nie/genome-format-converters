@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# T4 — GFF3 → GTF.  Competitors: AGAT agat_sp_gff2gtf.pl, gffread.
+# T4 — GFF3 → GTF.  Competitors: AGAT agat_convert_sp_gff2gtf.pl, gffread.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,11 +53,11 @@ else
 fi
 
 # ---------- AGAT ------------------------------------------------------------
-# AGAT ships a dedicated agat_sp_gff2gtf.pl. It is a Perl tool that does
+# AGAT ships a dedicated agat_convert_sp_gff2gtf.pl. It is a Perl tool that does
 # deep validation/conversion of the GFF hierarchy, so it is substantially
 # slower than gffread or gfc — this is by design and worth showing.
-if command -v agat_sp_gff2gtf.pl >/dev/null 2>&1; then
-    agat_version="$(agat_sp_gff2gtf.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' ' || echo unknown)"
+if command -v agat_convert_sp_gff2gtf.pl >/dev/null 2>&1; then
+    agat_version="$(agat_convert_sp_gff2gtf.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' ' || echo unknown)"
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         out_dir="$bench_dir/agat_rep${rep}"
         mkdir -p "$out_dir"
@@ -66,12 +66,12 @@ if command -v agat_sp_gff2gtf.pl >/dev/null 2>&1; then
             --replicate "$rep" \
             --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      agat_sp_gff2gtf.pl --gff \"\$f\" -o \"$out_dir/\$stem.gtf\"; \
+                      agat_convert_sp_gff2gtf.pl --gff \"\$f\" -o \"$out_dir/\$stem.gtf\"; \
                    done" \
             >> "$out"
     done
 else
-    echo "[skip] T4 AGAT (agat_sp_gff2gtf.pl not on PATH)" >&2
+    echo "[skip] T4 AGAT (agat_convert_sp_gff2gtf.pl not on PATH)" >&2
 fi
 
 echo "[done] T4 rows written to $out" >&2

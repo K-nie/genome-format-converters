@@ -13,7 +13,7 @@ Seven tasks, chosen to span the tool's feature coverage without being a sales pi
 | T1 | VCF → EIGENSTRAT triplet | `vcf-to-eigenstrat` | convertf (EIGENSOFT), a handwritten `bcftools + awk` script, `pileupCaller` (pseudohap variant). |
 | T2 | VCF → PLINK binary (`.bed`/`.bim`/`.fam`) | `vcf-to-plink` | `plink2 --vcf`, `plink1.9 --vcf --make-bed`. |
 | T3 | FASTA + GFF → GenBank | `fasta-gff-to-gbk` | `EMBOSS seqret`, a handwritten Biopython script, `gff3toembl`. |
-| T4 | GFF3 → GTF | `gff3-to-gtf` | `AGAT agat_sp_gff2gtf.pl`, `gffread`. |
+| T4 | GFF3 → GTF | `gff3-to-gtf` | `AGAT agat_convert_sp_gff2gtf.pl`, `gffread`. |
 | T5 | GFF3 → BED12 | `gff3-to-bed12` | `UCSC gtfToGenePred` + `genePredToBed` chain, `AGAT agat_convert_sp_gff2bed.pl`. |
 | T6 | HMMER `--tblout` → TSV | `hmmer-tblout-to-tsv` | `awk`/`cut` one-liner, `ESL-reformat` (not quite equivalent). |
 | T7 | OrthoFinder `Orthogroups.tsv` → per-OG FASTA | `orthogroups-to-fasta` | Handwritten Python (typical lab script). |

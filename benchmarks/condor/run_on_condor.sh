@@ -65,7 +65,7 @@ mkdir -p benchmarks/results
     plink2 --version 2>/dev/null | head -1 || echo "plink2 not installed"
     plink --version 2>/dev/null | head -1 || echo "plink 1.9 not installed"
     gffread --version 2>/dev/null || echo "gffread not installed"
-    agat_sp_gff2gtf.pl --help 2>&1 | head -1 || echo "AGAT not installed"
+    agat_convert_sp_gff2gtf.pl --help 2>&1 | head -1 || echo "AGAT not installed"
     seqret -help 2>&1 | head -3 || echo "EMBOSS seqret not installed"
     hmmsearch -h 2>&1 | head -1 || echo "HMMER not installed"
     echo
