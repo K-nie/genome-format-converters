@@ -100,6 +100,14 @@ def _convert_file(in_file: Path, out_prefix: Path,
     snp_rows: list = [] if also_plink else None
     geno_rows: list = [] if also_plink else None
 
+    # Hoist byte constants to local names — the per-sample inner loop runs
+    # ~2.5e9 times on chr22-scale input, so cutting one global lookup per
+    # iteration is measurable.
+    _b0 = ord("0")
+    _b1 = ord("1")
+    _b2 = ord("2")
+    _b9 = ord("9")
+
     with pysam.VariantFile(str(in_file)) as vcf, \
             open(geno_path, "w") as geno_fh, \
             open(snp_path, "w") as snp_fh:
@@ -140,17 +148,42 @@ def _convert_file(in_file: Path, out_prefix: Path,
                 skipped_transition += 1
                 continue
 
-            row = "".join(
-                _genotype_code(rec.samples[s].allele_indices, flipped)
-                for s in samples
-            )
-
-            if len(row) != len(samples):
+            # Inline the genotype encoding so the per-sample inner loop is
+            # bytecode-only (no `_genotype_code` call per sample, no
+            # `rec.samples[name]` dict lookup). This is the chr22 hot path:
+            # ~2.5e9 iterations per replicate. Diploid fast path covers the
+            # common case; the polyploid/haploid branch preserves the
+            # original `_genotype_code` semantics exactly (count==2 → "2",
+            # count==1 → "1", any other count → "0", any None → "9").
+            n_samples = len(samples)
+            codes = bytearray(n_samples)
+            major_idx = 1 if flipped else 0
+            i = 0
+            for s_obj in rec.samples.itervalues():
+                ai = s_obj.allele_indices
+                if ai is None:
+                    codes[i] = _b9
+                elif len(ai) == 2:
+                    a0 = ai[0]
+                    a1 = ai[1]
+                    if a0 is None or a1 is None:
+                        codes[i] = _b9
+                    else:
+                        codes[i] = _b0 + (a0 == major_idx) + (a1 == major_idx)
+                else:
+                    if any(a is None for a in ai):
+                        codes[i] = _b9
+                    else:
+                        cnt = sum(1 for a in ai if a == major_idx)
+                        codes[i] = _b2 if cnt == 2 else (_b1 if cnt == 1 else _b0)
+                i += 1
+            if i != n_samples:
                 log_warn(
-                    f"{in_file.name}: row-length mismatch at {rec.chrom}:{rec.pos} "
-                    f"({len(row)} vs {len(samples)} samples). Skipping site."
+                    f"{in_file.name}: sample count mismatch at {rec.chrom}:{rec.pos} "
+                    f"({i} vs {n_samples} samples). Skipping site."
                 )
                 continue
+            row = codes.decode("ascii")
 
             if not passes_missing(row, max_missing):
                 skipped_missing += 1
