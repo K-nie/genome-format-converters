@@ -18,8 +18,15 @@ polarisation can be driven from an outgroup `--ancestral-fasta` or the
 from pathlib import Path
 from typing import Optional, Tuple
 
+import numpy as np
+
 try:
-    import pysam
+    import cyvcf2
+except ImportError:
+    cyvcf2 = None
+
+try:
+    import pysam  # still used by _eigenstrat_common.AncestralProvider for FASTA random access
 except ImportError:
     pysam = None
 
@@ -49,6 +56,30 @@ from ._eigenstrat_common import (
 )
 
 _VCF_EXTS = [".vcf", ".vcf.gz", ".bcf"]
+
+# cyvcf2.Variant.gt_types returns a numpy int32 array of {0, 1, 2, 3} per sample:
+#   0 = HOM_REF, 1 = HET, 2 = MISSING (./. or partial), 3 = HOM_ALT.
+# These two lookup tables map gt_types -> EIGENSTRAT byte ('0' / '1' / '2' / '9').
+# Indexing them with the int32 array vectorises the per-sample encoding into a
+# single C-level numpy gather, eliminating the per-sample Python loop that was
+# the dominant cost in the previous pysam-based implementation.
+#
+# Unflipped (post-polarisation REF is the major allele): count copies of REF.
+#   HOM_REF (=2 copies of major) -> '2'
+#   HET     (=1 copy)             -> '1'
+#   MISSING                       -> '9'
+#   HOM_ALT (=0 copies)           -> '0'
+_LOOKUP_UNFLIPPED = np.array(
+    [ord("2"), ord("1"), ord("9"), ord("0")], dtype=np.uint8
+)
+# Flipped (ancestral disagreed with REF, so post-polarisation ALT is major).
+#   HOM_REF (=0 copies of major) -> '0'
+#   HET     (=1 copy)             -> '1'
+#   MISSING                       -> '9'
+#   HOM_ALT (=2 copies)           -> '2'
+_LOOKUP_FLIPPED = np.array(
+    [ord("0"), ord("1"), ord("9"), ord("2")], dtype=np.uint8
+)
 
 
 def _genotype_code(alleles, flipped: bool) -> str:
@@ -100,19 +131,11 @@ def _convert_file(in_file: Path, out_prefix: Path,
     snp_rows: list = [] if also_plink else None
     geno_rows: list = [] if also_plink else None
 
-    # Hoist byte constants to local names — the per-sample inner loop runs
-    # ~2.5e9 times on chr22-scale input, so cutting one global lookup per
-    # iteration is measurable.
-    _b0 = ord("0")
-    _b1 = ord("1")
-    _b2 = ord("2")
-    _b9 = ord("9")
-
-    with pysam.VariantFile(str(in_file)) as vcf, \
+    with cyvcf2.VCF(str(in_file)) as vcf, \
             open(geno_path, "w") as geno_fh, \
             open(snp_path, "w") as snp_fh:
-        samples = list(vcf.header.samples)
-        contigs = set(vcf.header.contigs.keys())
+        samples = list(vcf.samples)
+        contigs = set(vcf.seqnames)
 
         validate_map_coverage("pop-map", pop_map, samples, strict_maps)
         validate_map_coverage("sex-map", sex_map, samples, strict_maps)
@@ -120,12 +143,15 @@ def _convert_file(in_file: Path, out_prefix: Path,
 
         write_ind(ind_path, samples, pop_map, sex_map)
 
-        for rec in vcf:
-            if not rec.alts or len(rec.alts) != 1:
+        n_samples = len(samples)
+
+        for var in vcf:
+            # Multi-allelic / indel / non-ACGT filtering on REF/ALT.
+            if not var.ALT or len(var.ALT) != 1:
                 skipped_multiallelic += 1
                 continue
-            ref_a = rec.ref.upper()
-            alt_a = rec.alts[0].upper()
+            ref_a = var.REF.upper()
+            alt_a = var.ALT[0].upper()
             if len(ref_a) != 1 or len(alt_a) != 1:
                 skipped_indel += 1
                 continue
@@ -135,55 +161,33 @@ def _convert_file(in_file: Path, out_prefix: Path,
 
             info_aa_val = None
             if info_aa:
-                aa = rec.info.get("AA")
+                aa = var.INFO.get("AA")
                 if isinstance(aa, (list, tuple)):
                     aa = aa[0] if aa else None
                 info_aa_val = str(aa) if aa else None
 
             major, minor, flipped = polarise(
-                ref_a, alt_a, rec.chrom, rec.pos, ancestral, info_aa_val
+                ref_a, alt_a, var.CHROM, var.POS, ancestral, info_aa_val
             )
 
             if transversions_only and is_transition(major, minor):
                 skipped_transition += 1
                 continue
 
-            # Inline the genotype encoding so the per-sample inner loop is
-            # bytecode-only (no `_genotype_code` call per sample, no
-            # `rec.samples[name]` dict lookup). This is the chr22 hot path:
-            # ~2.5e9 iterations per replicate. Diploid fast path covers the
-            # common case; the polyploid/haploid branch preserves the
-            # original `_genotype_code` semantics exactly (count==2 → "2",
-            # count==1 → "1", any other count → "0", any None → "9").
-            n_samples = len(samples)
-            codes = bytearray(n_samples)
-            major_idx = 1 if flipped else 0
-            i = 0
-            for s_obj in rec.samples.itervalues():
-                ai = s_obj.allele_indices
-                if ai is None:
-                    codes[i] = _b9
-                elif len(ai) == 2:
-                    a0 = ai[0]
-                    a1 = ai[1]
-                    if a0 is None or a1 is None:
-                        codes[i] = _b9
-                    else:
-                        codes[i] = _b0 + (a0 == major_idx) + (a1 == major_idx)
-                else:
-                    if any(a is None for a in ai):
-                        codes[i] = _b9
-                    else:
-                        cnt = sum(1 for a in ai if a == major_idx)
-                        codes[i] = _b2 if cnt == 2 else (_b1 if cnt == 1 else _b0)
-                i += 1
-            if i != n_samples:
+            # Bulk-encode the genotype row via numpy lookup table. cyvcf2's
+            # gt_types returns the per-sample {0,1,2,3} array in one C call,
+            # so this whole inner step is three numpy ops per record instead
+            # of a 2504-iteration Python loop.
+            gt = var.gt_types
+            codes = (_LOOKUP_FLIPPED if flipped else _LOOKUP_UNFLIPPED)[gt]
+            row = codes.tobytes().decode("ascii")
+
+            if len(row) != n_samples:
                 log_warn(
-                    f"{in_file.name}: sample count mismatch at {rec.chrom}:{rec.pos} "
-                    f"({i} vs {n_samples} samples). Skipping site."
+                    f"{in_file.name}: row-length mismatch at {var.CHROM}:{var.POS} "
+                    f"({len(row)} vs {n_samples} samples). Skipping site."
                 )
                 continue
-            row = codes.decode("ascii")
 
             if not passes_missing(row, max_missing):
                 skipped_missing += 1
@@ -192,18 +196,18 @@ def _convert_file(in_file: Path, out_prefix: Path,
                 skipped_maf += 1
                 continue
 
-            snp_id = rec.id if rec.id not in (None, ".") else f"{rec.chrom}_{rec.pos}"
-            emitted_chrom = resolve_chrom(rec.chrom, chrom_map, default_chrom)
-            morgans = morgans_for(rec.chrom, rec.pos, gmap)
+            snp_id = var.ID if var.ID not in (None, ".") else f"{var.CHROM}_{var.POS}"
+            emitted_chrom = resolve_chrom(var.CHROM, chrom_map, default_chrom)
+            morgans = morgans_for(var.CHROM, var.POS, gmap)
 
             snp_fh.write(
-                f"{snp_id}\t{emitted_chrom}\t{morgans}\t{rec.pos}\t{major}\t{minor}\n"
+                f"{snp_id}\t{emitted_chrom}\t{morgans}\t{var.POS}\t{major}\t{minor}\n"
             )
             geno_fh.write(row + "\n")
 
             if also_plink:
                 snp_rows.append(
-                    (snp_id, emitted_chrom, morgans, rec.pos, major, minor)
+                    (snp_id, emitted_chrom, morgans, var.POS, major, minor)
                 )
                 geno_rows.append(row)
             kept += 1
@@ -234,7 +238,14 @@ def batch_convert(input_dir: str, output_dir: str,
                   also_plink: bool = False,
                   force: bool = False,
                   pattern: Optional[str] = None) -> None:
-    if pysam is None:
+    if cyvcf2 is None:
+        raise ImportError(
+            "cyvcf2 is required for vcf_to_eigenstrat. "
+            "Install via `pip install cyvcf2` or `mamba install -c bioconda cyvcf2`."
+        )
+    # pysam is only needed when --ancestral-fasta is supplied (FastaFile lookup
+    # in AncestralProvider). Defer the check until we know we'll need it.
+    if ancestral_fasta is not None and pysam is None:
         require_pysam()
     in_path = Path(input_dir)
     out_path = prepare_output_dir(output_dir, force=force)

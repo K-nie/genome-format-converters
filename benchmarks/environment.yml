@@ -16,7 +16,8 @@ dependencies:
   # --- gfc runtime deps (let pip install gfc itself) --------------------
   - biopython>=1.78
   - pandas>=1.0
-  - pysam>=0.22
+  - pysam>=0.22         # FastaFile random access (AncestralProvider)
+  - cyvcf2>=0.30        # bulk VCF genotype access for vcf_to_eigenstrat hot path
   - bcbio-gff>=0.7
 
   # --- benchmark harness deps -------------------------------------------
