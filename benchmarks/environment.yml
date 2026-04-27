@@ -17,7 +17,7 @@ dependencies:
   - biopython>=1.78
   - pandas>=1.0
   - pysam>=0.22         # FastaFile random access (AncestralProvider)
-  - cyvcf2>=0.30        # bulk VCF genotype access for vcf_to_eigenstrat hot path
+  - cyvcf2>=0.31        # bulk VCF genotype access; >=0.31 avoids stale py27 builds on bioconda
   - bcbio-gff>=0.7
 
   # --- benchmark harness deps -------------------------------------------
