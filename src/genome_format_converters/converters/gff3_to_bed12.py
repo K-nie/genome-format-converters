@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""GFF3 → BED12.
+"""GFF3 -> BED12.
+
+Author: Benjamin Narh-Madey
 
 Emits one BED12 line per transcript (``mRNA`` or similar), with exon
 children collapsed into the ``blockCount`` / ``blockSizes`` /
@@ -7,106 +9,226 @@ children collapsed into the ``blockCount`` / ``blockSizes`` /
 children when present; otherwise ``thickStart == thickEnd == chromStart``
 so IGV renders the whole transcript as UTR.
 
-For GFF3 inputs that contain only ``gene`` → ``CDS`` hierarchies (no
+For GFF3 inputs that contain only ``gene`` -> ``CDS`` hierarchies (no
 explicit ``exon`` features, common in some yeast annotations), CDS spans
 are used as exon blocks instead.
+
+Implementation note (perf): we replaced the BCBio.GFF parser with a
+two-pass streaming text parser. Pass 1 records every transcript and its
+exon/CDS children indexed by Parent ID; pass 2 emits one BED12 row per
+transcript directly from the indexed spans. This avoids per-feature
+SeqFeature object construction and recursive sub_features walking, which
+on real Y1000+ annotations dominate runtime.
 """
 
 from pathlib import Path
-from typing import List, Optional, Tuple
-
-from BCBio import GFF
+from typing import Dict, List, Optional, Tuple
 
 from ._common import iter_input_files, log_info, prepare_output_dir
 
-_TRANSCRIPT_TYPES = {"mRNA", "transcript", "ncRNA", "lnc_RNA", "tRNA", "rRNA",
-                     "snoRNA", "snRNA"}
+_TRANSCRIPT_TYPES = frozenset({
+    "mRNA", "transcript", "ncRNA", "lnc_RNA",
+    "tRNA", "rRNA", "snoRNA", "snRNA",
+})
+
+# A "row" we keep per transcript and per exon/CDS child. Tuples are far
+# cheaper than dataclasses or named-tuples in tight inner loops.
+# Transcript record: (rec_id, start1, end, strand, name, score, fid)
+# Block record: (start1, end)
 
 
-def _strand_char(strand) -> str:
-    if strand == 1:
-        return "+"
-    if strand == -1:
-        return "-"
+def _strand_char(s: str) -> str:
+    if s == "+" or s == "-":
+        return s
     return "."
 
 
-def _collect_by_type(feature, target_types):
-    out = []
-    stack = [feature]
-    while stack:
-        f = stack.pop()
-        if f.type in target_types:
-            out.append(f)
-        stack.extend(f.sub_features)
-    return out
+def _parse_attrs_min(attr_field: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Extract ID, Parent (first), and score (rare on attrs) from column 9."""
+    if not attr_field or attr_field == ".":
+        return None, None, None
+    fid: Optional[str] = None
+    parent: Optional[str] = None
+    for item in attr_field.split(";"):
+        if not item:
+            continue
+        if item[0] == " ":
+            item = item.lstrip()
+            if not item:
+                continue
+        eq = item.find("=")
+        if eq < 1:
+            continue
+        key = item[:eq]
+        if key == "ID":
+            fid = item[eq + 1:].rstrip()
+        elif key == "Parent":
+            v = item[eq + 1:].rstrip()
+            comma = v.find(",")
+            parent = v[:comma] if comma >= 0 else v
+    return fid, parent, None
 
 
-def _emit_bed12(rec_id: str, transcript, out_handle) -> None:
-    exons = _collect_by_type(transcript, {"exon"})
-    if not exons:
-        # Fall back to CDS as exon blocks when no exon child is declared.
-        exons = _collect_by_type(transcript, {"CDS"})
-    if not exons:
-        # Not a splice-bearing feature — emit a single-block BED12 line.
-        start = int(transcript.location.start)
-        end = int(transcript.location.end)
-        name = transcript.qualifiers.get("ID", [transcript.type])[0]
-        score = transcript.qualifiers.get("score", ["0"])[0]
-        strand = _strand_char(transcript.location.strand)
-        out_handle.write(
-            f"{rec_id}\t{start}\t{end}\t{name}\t{score}\t{strand}\t"
-            f"{start}\t{end}\t0\t1\t{end - start},\t0,\n"
-        )
-        return
+def _emit_bed12(
+    rec_id: str, start1: int, end: int, strand: str, name: str, score: str,
+    exons: List[Tuple[int, int]], cdses: List[Tuple[int, int]],
+    write,
+) -> None:
+    """Write one BED12 row.
 
-    exons = sorted(exons, key=lambda e: int(e.location.start))
-    chrom_start = int(exons[0].location.start)
-    chrom_end = int(exons[-1].location.end)
+    ``start1`` / ``end`` are GFF3 1-based-inclusive; we convert to 0-based
+    half-open BED here. ``exons`` / ``cdses`` likewise.
+    """
+    if exons:
+        # Sort once; ascending by start. ``list.sort`` is in-place and stable.
+        exons.sort()
+        chrom_start = exons[0][0] - 1
+        chrom_end = exons[-1][1]
+    else:
+        # Single-block: span the whole transcript.
+        chrom_start = start1 - 1
+        chrom_end = end
+        exons = [(start1, end)]
 
-    cds = _collect_by_type(transcript, {"CDS"})
-    if cds:
-        cds = sorted(cds, key=lambda c: int(c.location.start))
-        thick_start = int(cds[0].location.start)
-        thick_end = int(cds[-1].location.end)
+    if cdses:
+        cdses.sort()
+        thick_start = cdses[0][0] - 1
+        thick_end = cdses[-1][1]
     else:
         thick_start = chrom_start
         thick_end = chrom_start
 
-    block_sizes = [int(e.location.end) - int(e.location.start) for e in exons]
-    block_starts = [int(e.location.start) - chrom_start for e in exons]
+    n = len(exons)
+    if n == 1:
+        s0, e0 = exons[0]
+        block_sizes = f"{e0 - s0 + 1},"
+        block_starts = "0,"
+    else:
+        # Local accumulators - one f-string per block, joined once.
+        sizes_parts = []
+        starts_parts = []
+        for s, e in exons:
+            sizes_parts.append(str(e - s + 1))
+            starts_parts.append(str(s - 1 - chrom_start))
+        block_sizes = ",".join(sizes_parts) + ","
+        block_starts = ",".join(starts_parts) + ","
 
-    name = transcript.qualifiers.get("ID", [transcript.type])[0]
-    score = transcript.qualifiers.get("score", ["0"])[0]
-    strand = _strand_char(transcript.location.strand)
-
-    out_handle.write(
+    write(
         f"{rec_id}\t{chrom_start}\t{chrom_end}\t{name}\t{score}\t{strand}\t"
-        f"{thick_start}\t{thick_end}\t0\t{len(exons)}\t"
-        f"{','.join(str(s) for s in block_sizes)},\t"
-        f"{','.join(str(s) for s in block_starts)},\n"
+        f"{thick_start}\t{thick_end}\t0\t{n}\t{block_sizes}\t{block_starts}\n"
     )
 
 
-def _walk(rec_id: str, feature, out_handle) -> None:
-    if feature.type in _TRANSCRIPT_TYPES:
-        _emit_bed12(rec_id, feature, out_handle)
-        return
-    # Gene-level features with no transcript children: emit directly.
-    if feature.type == "gene" and not any(
-        sub.type in _TRANSCRIPT_TYPES for sub in feature.sub_features
-    ):
-        _emit_bed12(rec_id, feature, out_handle)
-        return
-    for sub in feature.sub_features:
-        _walk(rec_id, sub, out_handle)
-
-
 def _convert_file(in_file: Path, out_file: Path) -> None:
-    with open(in_file) as in_handle, open(out_file, "w") as out_handle:
-        for rec in GFF.parse(in_handle):
-            for feature in rec.features:
-                _walk(rec.id, feature, out_handle)
+    # Maps:
+    #   transcripts[fid] = (rec_id, start1, end, strand, name, score)
+    #   exons_by_parent[pid] = list of (start1, end)
+    #   cds_by_parent[pid] = list of (start1, end)
+    #   gene_singleton[gid] = transcript-shaped tuple, used only when a
+    #       gene has no transcript children.
+    #   gene_has_transcript[gid] = True if any transcript declares this gene
+    #       as parent. We track this so we can decide at emit time whether
+    #       to emit the gene as a single-block row.
+    transcripts: Dict[str, Tuple[str, int, int, str, str, str]] = {}
+    transcript_order: List[str] = []
+    exons_by_parent: Dict[str, List[Tuple[int, int]]] = {}
+    cds_by_parent: Dict[str, List[Tuple[int, int]]] = {}
+    gene_singleton: Dict[str, Tuple[str, int, int, str, str, str]] = {}
+    gene_order: List[str] = []
+    gene_has_transcript: Dict[str, bool] = {}
+
+    with open(in_file, "r", encoding="utf-8") as in_handle:
+        for line in in_handle:
+            if not line:
+                continue
+            first = line[0]
+            if first == "#" or first == "\n":
+                continue
+            if line.endswith("\n"):
+                line = line[:-1]
+            if not line:
+                continue
+            cols = line.split("\t")
+            if len(cols) < 9:
+                continue
+            ftype = cols[2]
+            try:
+                start1 = int(cols[3])
+                end = int(cols[4])
+            except ValueError:
+                continue
+            strand = _strand_char(cols[6])
+            fid, parent, _ = _parse_attrs_min(cols[8])
+
+            if ftype == "gene":
+                if fid is not None:
+                    gene_singleton[fid] = (
+                        cols[0], start1, end, strand, fid,
+                        cols[5] if cols[5] != "." else "0",
+                    )
+                    if fid not in gene_has_transcript:
+                        gene_has_transcript[fid] = False
+                    gene_order.append(fid)
+                continue
+
+            if ftype in _TRANSCRIPT_TYPES:
+                if fid is not None:
+                    transcripts[fid] = (
+                        cols[0], start1, end, strand, fid,
+                        cols[5] if cols[5] != "." else "0",
+                    )
+                    transcript_order.append(fid)
+                if parent is not None:
+                    gene_has_transcript[parent] = True
+                continue
+
+            if ftype == "exon" and parent is not None:
+                lst = exons_by_parent.get(parent)
+                if lst is None:
+                    exons_by_parent[parent] = [(start1, end)]
+                else:
+                    lst.append((start1, end))
+                continue
+
+            if ftype == "CDS" and parent is not None:
+                lst = cds_by_parent.get(parent)
+                if lst is None:
+                    cds_by_parent[parent] = [(start1, end)]
+                else:
+                    lst.append((start1, end))
+                continue
+
+    with open(out_file, "w", encoding="utf-8") as out_handle:
+        write = out_handle.write
+        # 1. Emit one BED12 per transcript, in encounter order.
+        for tid in transcript_order:
+            rec_id, start1, end, strand, name, score = transcripts[tid]
+            exons = exons_by_parent.get(tid, [])
+            cdses = cds_by_parent.get(tid, [])
+            if not exons and cdses:
+                # GFF3 inputs with only gene -> CDS (no exon child) - use
+                # CDS as the block list. This matches the bcbio-backed
+                # behaviour exactly.
+                exons = list(cdses)
+            _emit_bed12(rec_id, start1, end, strand, name, score,
+                        exons, cdses, write)
+
+        # 2. Emit gene-level singletons for genes with no transcript children
+        #    (mirrors the recursive walker that fell through to ``gene``).
+        seen_gene = set()
+        for gid in gene_order:
+            if gid in seen_gene:
+                continue
+            seen_gene.add(gid)
+            if gene_has_transcript.get(gid):
+                continue
+            rec_id, start1, end, strand, name, score = gene_singleton[gid]
+            exons = exons_by_parent.get(gid, [])
+            cdses = cds_by_parent.get(gid, [])
+            if not exons and cdses:
+                exons = list(cdses)
+            _emit_bed12(rec_id, start1, end, strand, name, score,
+                        exons, cdses, write)
 
 
 def batch_convert(input_dir: str, output_dir: str,
