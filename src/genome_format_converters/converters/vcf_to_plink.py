@@ -16,8 +16,15 @@ The binary ``.bed`` format encoding (per the PLINK 1.9 spec):
 from pathlib import Path
 from typing import Optional, Tuple
 
+import numpy as np
+
 try:
-    import pysam
+    import cyvcf2
+except ImportError:
+    cyvcf2 = None
+
+try:
+    import pysam  # only needed when --ancestral-fasta is supplied
 except ImportError:
     pysam = None
 
@@ -51,7 +58,8 @@ _PLINK_MAGIC = bytes([0x6C, 0x1B, 0x01])
 def _eig_code(alleles, flipped: bool) -> str:
     """Same logic as vcf_to_eigenstrat._genotype_code: counts copies of the
     major / reference allele, with flipping when polarisation swapped
-    ref/alt."""
+    ref/alt. Kept for reference / external callers; the chr22 hot path goes
+    through the bulk numpy encoder below."""
     if alleles is None or any(a is None for a in alleles):
         return "9"
     major_idx = 1 if flipped else 0
@@ -65,9 +73,40 @@ def _eig_code(alleles, flipped: bool) -> str:
 
 _EIG_TO_PLINK_BITS = {"0": 0b00, "9": 0b01, "1": 0b10, "2": 0b11}
 
+# cyvcf2.Variant.gt_types -> EIGENSTRAT byte ('0' / '1' / '2' / '9'), used
+# only for the existing string-based passes_missing / passes_maf filters.
+# Same lookups as in vcf_to_eigenstrat.py — should be consolidated in
+# _eigenstrat_common.py in a follow-up.
+_EIG_LOOKUP_UNFLIPPED = np.array(
+    [ord("2"), ord("1"), ord("9"), ord("0")], dtype=np.uint8
+)
+_EIG_LOOKUP_FLIPPED = np.array(
+    [ord("0"), ord("1"), ord("9"), ord("2")], dtype=np.uint8
+)
+
+# cyvcf2.Variant.gt_types -> PLINK 2-bit code, used for the .bed payload.
+# PLINK 1.9 encoding (per the docstring at the top of this module):
+#   00 = hom A1 (minor),  01 = missing,  10 = het,  11 = hom A2 (major).
+# cyvcf2 gt_types: 0 = HOM_REF, 1 = HET, 2 = MISSING, 3 = HOM_ALT.
+# Unflipped (REF is major):
+#   HOM_REF -> hom-major -> 11 (3); HET -> 10 (2); MISSING -> 01 (1); HOM_ALT -> hom-minor -> 00 (0).
+# Flipped (ALT is major):
+#   HOM_REF -> hom-minor -> 00 (0); HET -> 10 (2); MISSING -> 01 (1); HOM_ALT -> hom-major -> 11 (3).
+_PLINK_BITS_UNFLIPPED = np.array([3, 2, 1, 0], dtype=np.uint8)
+_PLINK_BITS_FLIPPED = np.array([0, 2, 1, 3], dtype=np.uint8)
+
+# Per-byte bit shifts: sample 0 lands in bits 0-1, sample 1 in bits 2-3,
+# sample 2 in bits 4-5, sample 3 in bits 6-7. Hoisted to module scope so
+# we don't re-allocate it per record on the chr22 hot path.
+_BYTE_SHIFTS = np.array([0, 2, 4, 6], dtype=np.uint8)
+
 
 def _pack_snp_row(row: str) -> bytes:
     """Pack an EIGENSTRAT-encoded genotype row into PLINK .bed bytes.
+
+    Reference implementation kept for tests and external callers. The chr22
+    hot path uses `_pack_bits_bulk` below, which packs straight from a
+    numpy uint8 array of 2-bit codes without a per-sample Python loop.
 
     Sample 0 lands in the least-significant 2 bits of byte 0, sample 1 in
     bits 2-3, and so on. Trailing samples in the last byte are padded with
@@ -88,6 +127,21 @@ def _pack_snp_row(row: str) -> bytes:
         for slot in range(remainder, 4):
             buf[last] |= 0b01 << (slot * 2)
     return bytes(buf)
+
+
+def _pack_bits_bulk(bits: np.ndarray) -> bytes:
+    """Pack n_samples 2-bit PLINK codes into ceil(n/4) bytes via numpy.
+
+    Produces output byte-equivalent to `_pack_snp_row` when fed the same
+    sample sequence: sample i lands in byte (i // 4), bit-offset 2 * (i %
+    4); trailing slots in the final byte are padded with 01 (missing).
+    """
+    n = bits.shape[0]
+    n_bytes = (n + 3) // 4
+    padded = np.full(n_bytes * 4, 0b01, dtype=np.uint8)
+    padded[:n] = bits
+    packed = (padded.reshape(n_bytes, 4) << _BYTE_SHIFTS).sum(axis=1).astype(np.uint8)
+    return packed.tobytes()
 
 
 def _write_fam(fam_path: Path, samples, pop_map, sex_map) -> None:
@@ -121,9 +175,11 @@ def _convert_file(in_file: Path, out_prefix: Path,
     skipped_maf = 0
     skipped_missing = 0
 
-    with pysam.VariantFile(str(in_file)) as vcf:
-        samples = list(vcf.header.samples)
-        contigs = set(vcf.header.contigs.keys())
+    with cyvcf2.VCF(str(in_file)) as vcf, \
+            open(bed_path, "wb") as bed_fh, \
+            open(bim_path, "w") as bim_fh:
+        samples = list(vcf.samples)
+        contigs = set(vcf.seqnames)
 
         validate_map_coverage("pop-map", pop_map, samples, strict_maps)
         validate_map_coverage("sex-map", sex_map, samples, strict_maps)
@@ -131,66 +187,71 @@ def _convert_file(in_file: Path, out_prefix: Path,
 
         _write_fam(fam_path, samples, pop_map, sex_map)
 
-        with open(bed_path, "wb") as bed_fh, open(bim_path, "w") as bim_fh:
-            bed_fh.write(_PLINK_MAGIC)
-            for rec in vcf:
-                if not rec.alts or len(rec.alts) != 1:
-                    skipped_multiallelic += 1
-                    continue
-                ref_a = rec.ref.upper()
-                alt_a = rec.alts[0].upper()
-                if len(ref_a) != 1 or len(alt_a) != 1:
-                    skipped_indel += 1
-                    continue
-                if ref_a not in BASES or alt_a not in BASES:
-                    skipped_non_acgt += 1
-                    continue
+        bed_fh.write(_PLINK_MAGIC)
+        n_samples = len(samples)
 
-                info_aa_val = None
-                if info_aa:
-                    aa = rec.info.get("AA")
-                    if isinstance(aa, (list, tuple)):
-                        aa = aa[0] if aa else None
-                    info_aa_val = str(aa) if aa else None
+        for var in vcf:
+            if not var.ALT or len(var.ALT) != 1:
+                skipped_multiallelic += 1
+                continue
+            ref_a = var.REF.upper()
+            alt_a = var.ALT[0].upper()
+            if len(ref_a) != 1 or len(alt_a) != 1:
+                skipped_indel += 1
+                continue
+            if ref_a not in BASES or alt_a not in BASES:
+                skipped_non_acgt += 1
+                continue
 
-                major, minor, flipped = polarise(
-                    ref_a, alt_a, rec.chrom, rec.pos, ancestral, info_aa_val
+            info_aa_val = None
+            if info_aa:
+                aa = var.INFO.get("AA")
+                if isinstance(aa, (list, tuple)):
+                    aa = aa[0] if aa else None
+                info_aa_val = str(aa) if aa else None
+
+            major, minor, flipped = polarise(
+                ref_a, alt_a, var.CHROM, var.POS, ancestral, info_aa_val
+            )
+
+            if transversions_only and is_transition(major, minor):
+                skipped_transition += 1
+                continue
+
+            # Bulk encode: gt_types is the per-record numpy int32 array of
+            # {0,1,2,3}. One numpy gather builds the EIGENSTRAT row (used
+            # only for the existing string-based filters); a second gather
+            # builds the PLINK 2-bit codes that get packed for the .bed.
+            gt = var.gt_types
+            eig_codes = (_EIG_LOOKUP_FLIPPED if flipped else _EIG_LOOKUP_UNFLIPPED)[gt]
+            row = eig_codes.tobytes().decode("ascii")
+
+            if len(row) != n_samples:
+                log_warn(
+                    f"{in_file.name}: row-length mismatch at {var.CHROM}:{var.POS} "
+                    f"({len(row)} vs {n_samples} samples). Skipping."
                 )
+                continue
 
-                if transversions_only and is_transition(major, minor):
-                    skipped_transition += 1
-                    continue
+            if not passes_missing(row, max_missing):
+                skipped_missing += 1
+                continue
+            if not passes_maf(row, min_maf):
+                skipped_maf += 1
+                continue
 
-                row = "".join(
-                    _eig_code(rec.samples[s].allele_indices, flipped)
-                    for s in samples
-                )
+            snp_id = var.ID if var.ID not in (None, ".") else f"{var.CHROM}_{var.POS}"
+            emitted_chrom = resolve_chrom(var.CHROM, chrom_map, default_chrom)
+            morgans = morgans_for(var.CHROM, var.POS, gmap)
 
-                if len(row) != len(samples):
-                    log_warn(
-                        f"{in_file.name}: row-length mismatch at {rec.chrom}:{rec.pos} "
-                        f"({len(row)} vs {len(samples)} samples). Skipping."
-                    )
-                    continue
-
-                if not passes_missing(row, max_missing):
-                    skipped_missing += 1
-                    continue
-                if not passes_maf(row, min_maf):
-                    skipped_maf += 1
-                    continue
-
-                snp_id = rec.id if rec.id not in (None, ".") else f"{rec.chrom}_{rec.pos}"
-                emitted_chrom = resolve_chrom(rec.chrom, chrom_map, default_chrom)
-                morgans = morgans_for(rec.chrom, rec.pos, gmap)
-
-                # .bim format: chrom snp_id cM bp allele1(minor) allele2(major)
-                bim_fh.write(
-                    f"{emitted_chrom}\t{snp_id}\t{morgans * 100.0:.6f}\t"
-                    f"{rec.pos}\t{minor}\t{major}\n"
-                )
-                bed_fh.write(_pack_snp_row(row))
-                kept += 1
+            # .bim format: chrom snp_id cM bp allele1(minor) allele2(major)
+            bim_fh.write(
+                f"{emitted_chrom}\t{snp_id}\t{morgans * 100.0:.6f}\t"
+                f"{var.POS}\t{minor}\t{major}\n"
+            )
+            bits = (_PLINK_BITS_FLIPPED if flipped else _PLINK_BITS_UNFLIPPED)[gt]
+            bed_fh.write(_pack_bits_bulk(bits))
+            kept += 1
 
     log_info(
         f"{in_file.name}: {kept} biallelic SNPs written (PLINK binary); "
@@ -214,7 +275,12 @@ def batch_convert(input_dir: str, output_dir: str,
                   strict_maps: bool = False,
                   force: bool = False,
                   pattern: Optional[str] = None) -> None:
-    if pysam is None:
+    if cyvcf2 is None:
+        raise ImportError(
+            "cyvcf2 is required for vcf_to_plink. "
+            "Install via `pip install cyvcf2` or `mamba install -c bioconda cyvcf2`."
+        )
+    if ancestral_fasta is not None and pysam is None:
         require_pysam()
     in_path = Path(input_dir)
     out_path = prepare_output_dir(output_dir, force=force)
