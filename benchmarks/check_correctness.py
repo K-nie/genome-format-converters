@@ -150,6 +150,24 @@ _REASON_T2 = (
     "footnote."
 )
 
+_REASON_T4 = (
+    "T4 (GFF3 -> GTF): gfc and gffread implement two defensible but distinct "
+    "GFF3-to-GTF translations. Confirmed locally on tests/test_data/tiny.gff3: "
+    "(i) gfc emits a faithful 1:1 row mapping including 'gene' and 'mRNA' "
+    "feature rows; gffread elides gene rows and renames 'mRNA' to "
+    "'transcript'. (ii) gffread fuses adjacent exon and CDS spans into a "
+    "single feature when they abut (101-150 + 151-200 -> 101-200); gfc "
+    "preserves the original GFF3 spans verbatim. (iii) Trailing-semicolon "
+    "and attribute-key order differ. gffread's normalisations are "
+    "transcript-centric and standard for transcript-isoform pipelines; "
+    "gfc's faithful mapping is standard for general feature-table "
+    "round-tripping. Neither is the canonical GTF rendering. The "
+    "comparator already canonicalises attribute order via "
+    "_normalise_gtf_line; correct=0 reflects the deeper structural "
+    "difference (line count, feature types, span boundaries) and is "
+    "documented rather than hidden behind a span-merging rewrite."
+)
+
 _REASON_T3 = (
     "T3 (FASTA+GFF -> GenBank): gfc uses Biopython's GenBank writer; the "
     "py-ref baseline also uses Biopython but with a different feature "
@@ -310,7 +328,19 @@ def _normalise_gtf_line(line: str) -> Optional[str]:
 
 
 def check_t4(gfc_dir: Path, ref_dir: Path) -> str:
-    """T4: line-set equivalence after sort + canonical-attribute order."""
+    """T4: line-set equivalence after sort + canonical-attribute order.
+
+    Divergence axis (Option II — accept correct=0 with Methods footnote,
+    see _REASON_T4):
+      gfc preserves the GFF3 row structure verbatim (including gene and
+      mRNA rows, separate exon/CDS spans); gffread normalises to a
+      transcript-centric layout (drops gene rows, renames mRNA to
+      transcript, fuses adjacent exon/CDS). Both renderings parse as
+      valid GTF; neither is the canonical form. The comparator keeps
+      its sorted-line + canonicalised-attribute-order contract so a
+      gfc-vs-gfc regression in line content would still fail; correct=0
+      vs gffread is the structural-divergence verdict.
+    """
     gfc_files = sorted(gfc_dir.glob("*.gtf"))
     ref_files = sorted(ref_dir.glob("*.gtf"))
     if not gfc_files or not ref_files:
