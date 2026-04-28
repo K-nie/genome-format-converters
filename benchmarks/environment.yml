@@ -31,6 +31,7 @@ dependencies:
   - htslib=1.19
   - plink2                 # binary .bed/.bim/.fam reference (T2)
   - plink=1.90b6.21        # plink 1.9 — still the standard for many pipelines (T2)
+  - eigensoft              # provides convertf (T1 reference) — bioconda 8.0.0+
 
   # --- competitors (sequence / annotation) ------------------------------
   - seqkit                 # FASTA / FASTQ reference

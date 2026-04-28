@@ -31,5 +31,32 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
                --output-dir '$out_dir' --pattern '*.gff3' --force" \
         >> "$out"
 done
-# TODO: UCSC chain (gff3 → gtf → genepred → bed12).
+
+# ---------- UCSC gff3ToGenePred + genePredToBed chain -----------------------
+# Two-step pipeline that's the canonical reference for genePred-aware tooling.
+# Same input dir as gfc; per-file output is `.gp` (intermediate) then `.bed`.
+# UCSC tools don't expose a clean `--version`, so the version string is
+# pulled from the active conda env's package metadata.
+if command -v gff3ToGenePred >/dev/null 2>&1 && command -v genePredToBed >/dev/null 2>&1; then
+    ucsc_version="$(conda list ucsc-gff3togenepred 2>/dev/null \
+        | awk '$1=="ucsc-gff3togenepred" {print "v"$2}' | head -1)"
+    : "${ucsc_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/ucsc_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T5" --tool "ucsc-chain" --version "$ucsc_version" \
+            --replicate "$rep" \
+            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+                      stem=\$(basename \"\$f\" .gff3); \
+                      gff3ToGenePred \"\$f\" '$out_dir/'\$stem.gp; \
+                      genePredToBed '$out_dir/'\$stem.gp '$out_dir/'\$stem.bed; \
+                   done" \
+            --notes "gff3ToGenePred + genePredToBed chain" \
+            >> "$out"
+    done
+else
+    echo "[skip] T5 UCSC chain (gff3ToGenePred / genePredToBed not on PATH)" >&2
+fi
+
 echo "[done] T5 rows written to $out" >&2

@@ -57,7 +57,9 @@ fi
 # deep validation/conversion of the GFF hierarchy, so it is substantially
 # slower than gffread or gfc — this is by design and worth showing.
 if command -v agat_convert_sp_gff2gtf.pl >/dev/null 2>&1; then
-    agat_version="$(agat_convert_sp_gff2gtf.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' ' || echo unknown)"
+    # AGAT prints version inside a pipe-delimited banner; strip both
+    # whitespace and the trailing `|` so the TSV doesn't show "v1.4.0|".
+    agat_version="$(agat_convert_sp_gff2gtf.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' |' || echo unknown)"
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         out_dir="$bench_dir/agat_rep${rep}"
         mkdir -p "$out_dir"
