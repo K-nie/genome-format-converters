@@ -25,7 +25,23 @@ if [[ -z "$conda_base" && -d "$HOME/miniforge3" ]]; then
 fi
 # shellcheck disable=SC1091
 source "$conda_base/etc/profile.d/conda.sh"
+
+# Initialise vars that some conda activate.d hooks (notably aster, mkl,
+# certain bioconda packages) extend without first checking they are set.
+# Without this, `set -u` blows up at activation with messages like
+# `aster_activate.sh: line 1: LD_LIBRARY_PATH: unbound variable` and the
+# whole job exits in 26 seconds before any task can run (run 136836).
+: "${LD_LIBRARY_PATH:=}"
+: "${PYTHONPATH:=}"
+export LD_LIBRARY_PATH PYTHONPATH
+
+# Bracket `conda activate` with `set +u` because conda's hook ecosystem
+# is allowed to be loose about defined-ness even after the init above —
+# safer to drop nounset for the duration of activation than to chase
+# every package's hook.
+set +u
 conda activate gfc-bench
+set -u
 
 echo "[info] PATH=$PATH"
 echo "[info] python=$(command -v python)"
