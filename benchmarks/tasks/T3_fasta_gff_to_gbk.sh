@@ -84,3 +84,4 @@ fi
 # Skipped competitor: gff3toembl. It's a Python-2-era tool not on bioconda
 # and pip-install requires legacy deps. Out of scope for Stage 1.
 echo "[done] T3 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T3 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T3 correctness check failed (non-fatal)" >&2

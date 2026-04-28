@@ -73,3 +73,4 @@ fi
 # stage. Documented for paper discussion; not implemented in Stage 1.
 
 echo "[done] T8 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T8 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T8 correctness check failed (non-fatal)" >&2

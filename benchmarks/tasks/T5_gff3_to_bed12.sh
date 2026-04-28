@@ -74,12 +74,17 @@ if command -v agat_convert_sp_gff2bed.pl >/dev/null 2>&1; then
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         out_dir="$bench_dir/agat_rep${rep}"
         mkdir -p "$out_dir"
+        # AGAT 1.4 unconditionally writes <input>.agat.log next to its
+        # CWD; the cd confines that clutter to the per-rep output dir.
+        # Same fix as T4. Trailing `; true` keeps the loop's exit clean
+        # even when one file fails — bench_one.py captures stderr.
         python "$repo/benchmarks/bench_one.py" \
             --task "T5" --tool "AGAT" --version "$agat_version" \
             --replicate "$rep" \
-            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+            --cmd "cd '$out_dir' && \
+                   for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      agat_convert_sp_gff2bed.pl --gff \"\$f\" -o '$out_dir/'\$stem.bed; \
+                      agat_convert_sp_gff2bed.pl --gff \"\$f\" -o \"\$stem.bed\"; \
                    done; true" \
             >> "$out"
     done
@@ -88,3 +93,4 @@ else
 fi
 
 echo "[done] T5 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T5 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T5 correctness check failed (non-fatal)" >&2

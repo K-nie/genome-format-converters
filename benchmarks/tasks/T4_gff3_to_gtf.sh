@@ -63,12 +63,19 @@ if command -v agat_convert_sp_gff2gtf.pl >/dev/null 2>&1; then
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         out_dir="$bench_dir/agat_rep${rep}"
         mkdir -p "$out_dir"
+        # AGAT 1.4 unconditionally writes <input>.agat.log next to its
+        # CWD — running from $PWD spreads 20+ log files into the repo
+        # root over the course of a smoke. The `cd` confines them to
+        # the per-rep output dir where they're trivially cleaned up.
+        # Inputs are referenced by absolute path so the cd doesn't
+        # break the file lookup.
         python "$repo/benchmarks/bench_one.py" \
             --task "T4" --tool "AGAT" --version "$agat_version" \
             --replicate "$rep" \
-            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+            --cmd "cd '$out_dir' && \
+                   for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      agat_convert_sp_gff2gtf.pl --gff \"\$f\" -o \"$out_dir/\$stem.gtf\"; \
+                      agat_convert_sp_gff2gtf.pl --gff \"\$f\" -o \"\$stem.gtf\"; \
                    done" \
             >> "$out"
     done
@@ -77,3 +84,4 @@ else
 fi
 
 echo "[done] T4 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T4 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T4 correctness check failed (non-fatal)" >&2

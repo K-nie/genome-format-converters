@@ -76,3 +76,4 @@ fi
 # a2, which flips every 00/11 pair. Document the exact conversion rule in the
 # paper rather than asserting byte-identity here.
 echo "[done] T2 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T2 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T2 correctness check failed (non-fatal)" >&2

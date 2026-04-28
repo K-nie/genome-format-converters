@@ -65,3 +65,4 @@ fi
 # benchmarks/refs/t6_pyhmmer.py.
 
 echo "[done] T6 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T6 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T6 correctness check failed (non-fatal)" >&2
