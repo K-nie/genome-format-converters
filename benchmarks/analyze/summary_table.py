@@ -58,12 +58,41 @@ def build_summary(df: pd.DataFrame) -> pd.DataFrame:
     correctness = (df[(df["tool"] == "gfc") & (df["replicate"] == 1)]
                    .set_index("task")["correct"].astype(str))
 
+    # Tasks present in successful rows (after the exit_code filter inside
+    # `_agg_tool`). If the raw TSV had a task whose every row was failed
+    # OR malformed (e.g. the legacy convertf row with embedded newline
+    # that pandas split into multi-row garbage), it'll be missing from
+    # the aggregate index and pivoting on the raw `df["task"].unique()`
+    # would KeyError on `wall.loc[task]`. Iterate the aggregated index
+    # instead — emit a per-task "no data" row for tasks that are in
+    # df but not in wall.
+    tasks_with_data = sorted({t for (t, _) in wall.index})
+    tasks_in_raw = sorted(df["task"].unique())
+
     rows = []
-    for task in sorted(df["task"].unique()):
+    for task in tasks_in_raw:
+        if task not in tasks_with_data:
+            rows.append({
+                "task": task,
+                "gfc_wall_s": "—",
+                "best_speed_tool": "—",
+                "best_speed_wall_s": "—",
+                "speedup_x": "—",
+                "gfc_rss_mb": "—",
+                "best_mem_tool": "—",
+                "best_mem_rss_mb": "—",
+                "mem_ratio_x": "—",
+                "correct": "",
+                "failed_tools": "(no successful reps)",
+            })
+            continue
+
         gfc_wall = wall.loc[(task, "gfc")] if (task, "gfc") in wall.index else None
         gfc_rss = rss.loc[(task, "gfc")] if (task, "gfc") in rss.index else None
 
         # Competitor candidates = every successful tool other than gfc.
+        # `wall.loc[task]` raises KeyError if `task` isn't in the
+        # aggregate's level-0; we already guarded above so this is safe.
         comp_wall = wall.loc[task].drop("gfc", errors="ignore")
         comp_rss = rss.loc[task].drop("gfc", errors="ignore")
 
