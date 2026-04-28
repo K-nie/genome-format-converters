@@ -64,4 +64,27 @@ else
     echo "[skip] T5 UCSC chain (gff3ToGenePred / genePredToBed not on PATH)" >&2
 fi
 
+# ---------- AGAT agat_convert_sp_gff2bed.pl ---------------------------------
+# AGAT's bed converter is the "deep validation" reference for T5. Same
+# trailing-pipe version-string fixup as T4. Output goes to .bed (not BED12)
+# but the timing comparison is what matters here.
+if command -v agat_convert_sp_gff2bed.pl >/dev/null 2>&1; then
+    agat_version="$(agat_convert_sp_gff2bed.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' |' || echo unknown)"
+    : "${agat_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/agat_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T5" --tool "AGAT" --version "$agat_version" \
+            --replicate "$rep" \
+            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+                      stem=\$(basename \"\$f\" .gff3); \
+                      agat_convert_sp_gff2bed.pl --gff \"\$f\" -o '$out_dir/'\$stem.bed; \
+                   done; true" \
+            >> "$out"
+    done
+else
+    echo "[skip] T5 AGAT (agat_convert_sp_gff2bed.pl not on PATH)" >&2
+fi
+
 echo "[done] T5 rows written to $out" >&2

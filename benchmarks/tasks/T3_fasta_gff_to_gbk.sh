@@ -38,6 +38,49 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         >> "$out"
 done
 
-# TODO: EMBOSS seqret -sequence <fa> -feature -fformat gff -osformat genbank
-# TODO: handwritten biopython reference (scripts/ref/t3_biopython.py)
+# ---------- EMBOSS seqret ---------------------------------------------------
+# seqret reads paired FASTA + feature table and emits GenBank. Per-file loop
+# so that one malformed input doesn't abort the whole task; trailing `; true`
+# guarantees a clean exit code so bench_one.py records a row regardless.
+if command -v seqret >/dev/null 2>&1; then
+    seqret_version="$(seqret -version 2>&1 | head -1 | tr -s ' ' | cut -d' ' -f2 | tr -d '|')"
+    : "${seqret_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/seqret_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T3" --tool "EMBOSS-seqret" --version "$seqret_version" \
+            --replicate "$rep" \
+            --cmd "for fa in '$GFC_BENCH_INPUT_DIR'/*.fasta; do \
+                      stem=\$(basename \"\$fa\" .fasta); \
+                      gff='$GFC_BENCH_INPUT_DIR'/\$stem.gff3; \
+                      [[ -f \"\$gff\" ]] && seqret -sequence \"\$fa\" -feature -fformat gff -osformat genbank -outseq '$out_dir/'\$stem.gb -auto; \
+                   done; true" \
+            --notes "$notes_default" \
+            >> "$out"
+    done
+else
+    echo "[skip] T3 EMBOSS seqret (seqret not on PATH)" >&2
+fi
+
+# ---------- handwritten biopython reference --------------------------------
+# benchmarks/refs/t3_biopython.py is the "what a careful bioinformatician
+# would write in an hour" baseline using SeqIO + bcbio-gff.
+ref_script="$repo/benchmarks/refs/t3_biopython.py"
+if [[ -f "$ref_script" ]]; then
+    py_version="$(python --version 2>&1 | cut -d' ' -f2)"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/pyref_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T3" --tool "py-ref" --version "$py_version" \
+            --replicate "$rep" \
+            --cmd "python '$ref_script' --input-dir '$GFC_BENCH_INPUT_DIR' --output-dir '$out_dir'" \
+            --notes "handwritten Biopython baseline; $notes_default" \
+            >> "$out"
+    done
+fi
+
+# Skipped competitor: gff3toembl. It's a Python-2-era tool not on bioconda
+# and pip-install requires legacy deps. Out of scope for Stage 1.
 echo "[done] T3 rows written to $out" >&2
