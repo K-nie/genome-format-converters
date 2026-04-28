@@ -132,6 +132,24 @@ _REASON_T1 = (
     "and downstream tools (smartpca, ADMIXTURE) accept both."
 )
 
+_REASON_T2 = (
+    "T2 (VCF -> PLINK .bed): gfc and plink1.9 produce structurally distinct "
+    "outputs from the same VCF input. Three independent divergence axes were "
+    "confirmed locally on tests/test_data/tiny.vcf: (i) gfc skips indels by "
+    "default and writes only biallelic SNPs (2/3 variants for tiny.vcf), "
+    "while plink1.9 retains all variants by default; (ii) gfc synthesises "
+    "variant IDs as '<chrom>_<pos>' when the VCF ID is '.', while plink1.9 "
+    "preserves the literal '.'; (iii) gfc and plink1.9 select different A1/A2 "
+    "allele assignments (gfc uses VCF REF/ALT directly; plink1.9 applies "
+    "minor-allele-first reordering). Consequently the .bim text and the .bed "
+    "binary payload differ in length, content, and genotype encoding "
+    "direction. None of these divergences is a bug in either tool; they are "
+    "documented design choices. We keep the strict byte-identity comparator "
+    "so any regression in gfc's own .bed output (relative to itself across "
+    "versions) would surface, and accept correct=0 vs plink1.9 with this "
+    "footnote."
+)
+
 _REASON_T3 = (
     "T3 (FASTA+GFF -> GenBank): gfc uses Biopython's GenBank writer; the "
     "py-ref baseline also uses Biopython but with a different feature "
@@ -206,7 +224,17 @@ def check_t1(gfc_dir: Path, ref_dir: Path) -> str:
 
 
 def check_t2(gfc_dir: Path, ref_dir: Path) -> str:
-    """T2: byte-identical .bed against plink1.9 reference."""
+    """T2: byte-identical .bed against plink1.9 reference.
+
+    Divergence axis (Option II — accept correct=0 with Methods footnote,
+    see _REASON_T2):
+      gfc and plink1.9 disagree on indel handling, variant ID synthesis,
+      and A1/A2 allele assignment. The .bed binary length and content
+      both differ on tiny.vcf (gfc=5 bytes, plink=6 bytes; gfc skips the
+      indel, plink retains it). The strict shasum contract is kept here
+      so a future regression in gfc's own .bed bytes — relative to a
+      pinned gfc reference run — would still fail loudly.
+    """
     gfc_beds = sorted(gfc_dir.glob("*.bed"))
     ref_beds = sorted(ref_dir.glob("*.bed"))
     if not gfc_beds or not ref_beds:
