@@ -54,7 +54,7 @@ if command -v seqret >/dev/null 2>&1; then
             --cmd "for fa in '$GFC_BENCH_INPUT_DIR'/*.fasta; do \
                       stem=\$(basename \"\$fa\" .fasta); \
                       gff='$GFC_BENCH_INPUT_DIR'/\$stem.gff3; \
-                      [[ -f \"\$gff\" ]] && seqret -sequence \"\$fa\" -feature -fformat gff -osformat genbank -outseq '$out_dir/'\$stem.gb -auto; \
+                      [[ -f \"\$gff\" ]] && seqret -sequence \"\$fa\" -feature -fformat gff -ufo \"\$gff\" -osformat genbank -outseq '$out_dir/'\$stem.gb -auto; \
                    done; true" \
             --notes "$notes_default" \
             >> "$out"
