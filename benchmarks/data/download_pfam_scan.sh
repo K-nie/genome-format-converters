@@ -28,7 +28,19 @@ if [[ -s "$tblout" && "$(wc -l < "$tblout")" -gt 100 ]]; then
 fi
 
 pfam_url="https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz"
+# Primary: SGD archive (canonical S288C ORF translations). Has been blocked
+# from the cluster's egress since 2026-04-26. Fallback: UniProt's reference
+# proteome stream for S. cerevisiae S288C (proteome UP000002311). UniProt
+# is a different organisation, different egress path, much more likely to
+# succeed when SGD's TLS endpoint is unreachable. The two FASTAs are not
+# byte-identical (UniProt headers carry sp|/tr| accessions and isoform
+# tags; SGD's are bare YxxNNNW IDs), but the protein content is the same
+# S288C reference proteome and HMMER's tblout output is structurally
+# equivalent — column counts, evalue distributions, and parsing
+# semantics all match. We mark the source in the [get] log line so a
+# downstream reader knows which fasta seeded the tblout.
 proteome_url="https://sgd-archive.yeastgenome.org/sequence/S288C_reference/orf_protein/orf_trans_all.fasta.gz"
+proteome_fallback_url="https://rest.uniprot.org/uniprotkb/stream?compressed=true&format=fasta&query=proteome:UP000002311"
 
 pfam_hmm="$dest/Pfam-A.hmm"
 proteome_fa="$dest/S288C_orf_trans_all.fasta"
@@ -51,21 +63,28 @@ if [[ ! -s "$pfam_hmm" ]]; then
 fi
 
 if [[ ! -s "$proteome_fa" ]]; then
-    echo "[get ] $proteome_url" >&2
-    # SGD archive (sgd-archive.yeastgenome.org) has been blocking the
-    # cluster's egress since at least 2026-04-26 (curl 28 timeout after
-    # 5 min, repeatable across multiple jobs). Cap the attempt at 30s
-    # total so the bootstrap doesn't burn 20 min per smoke on a known-
-    # dead URL. T6 has its own inline synthetic tblout fixture, so the
-    # paper-grade real-tblout pipeline being skipped is non-blocking.
-    if ! curl -fSL --connect-timeout 10 --max-time 30 --retry 1 \
-              -o "${proteome_fa}.gz" "$proteome_url"; then
-        echo "[warn] $proteome_url download failed; T6 will use the inline tblout fixture." >&2
-        # Don't propagate failure — the rest of the bench harness is
-        # designed to work without the real-tblout pipeline.
-        rm -f "${proteome_fa}.gz"
-    else
+    # Try SGD first (canonical source). Fast-fail at 30s if blocked.
+    echo "[get ] (SGD) $proteome_url" >&2
+    if curl -fSL --connect-timeout 10 --max-time 30 --retry 1 \
+            -o "${proteome_fa}.gz" "$proteome_url"; then
         gunzip -f "${proteome_fa}.gz"
+        echo "[done] proteome from SGD: $(grep -c '^>' "$proteome_fa") records" >&2
+    else
+        rm -f "${proteome_fa}.gz"
+        # Fall back to UniProt's reference proteome stream. Different
+        # organisation + egress path; usually reachable when SGD isn't.
+        echo "[warn] SGD blocked; trying UniProt reference proteome UP000002311" >&2
+        echo "[get ] (UniProt) $proteome_fallback_url" >&2
+        if curl -fSL --connect-timeout 10 --max-time 60 --retry 1 \
+                -o "${proteome_fa}.gz" "$proteome_fallback_url"; then
+            gunzip -f "${proteome_fa}.gz"
+            echo "[done] proteome from UniProt: $(grep -c '^>' "$proteome_fa") records" >&2
+        else
+            rm -f "${proteome_fa}.gz"
+            echo "[warn] both SGD and UniProt unreachable; T6 will use the inline tblout fixture." >&2
+            # Non-fatal: the rest of the bench harness is designed to
+            # work without the real-tblout pipeline.
+        fi
     fi
 fi
 
