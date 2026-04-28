@@ -478,8 +478,22 @@ def populate(task: str, bench_dir: Path, tsv_path: Path) -> str:
     for r in rows[1:]:
         r[ix_correct] = verdict_per_tool.get(r[ix_tool], "")
 
+    n_in = len(rows)
     with tsv_path.open("w", newline="") as fh:
         csv.writer(fh, delimiter="\t").writerows(rows)
+
+    # Defensive: re-read what we wrote and compare row counts. If they
+    # diverge, surface to stderr so the bug is visible in the bench log.
+    # (Run 136838 lost 3 of 4 T1 rows somewhere in this pipeline; this
+    # guard means the next divergence won't be silent.)
+    try:
+        with tsv_path.open() as fh:
+            n_out = sum(1 for _ in fh)
+    except OSError:
+        n_out = -1
+    if n_out != n_in:
+        print(f"[corr {task}] WARNING: wrote {n_out} lines, expected "
+              f"{n_in} (header + {n_in - 1} data rows)", file=sys.stderr)
 
     return f"[corr {task}] " + " ".join(summary_bits)
 

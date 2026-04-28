@@ -164,6 +164,64 @@ def render_markdown(table: pd.DataFrame) -> str:
     return "\n".join(lines) + "\n"
 
 
+def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
+    """One row per (task, competitor) so wins against every individual
+    competitor are visible — not just the single fastest one. Hides the
+    'gfc loses to plink2 by 14x but beats AGAT by 13x on the same task'
+    structure that the headline summary collapses.
+    """
+    wall = _agg_tool(df, "wall_s")
+    rss = _agg_tool(df, "peak_rss_mb")
+    rows = []
+    for task in sorted({t for (t, _) in wall.index}):
+        if (task, "gfc") not in wall.index:
+            continue
+        gfc_wall_mean = wall.loc[(task, "gfc"), "wall_s_mean"]
+        gfc_rss_mean = rss.loc[(task, "gfc"), "peak_rss_mb_mean"]
+        for comp_tool in sorted({tool for (t, tool) in wall.index
+                                 if t == task and tool != "gfc"}):
+            cw = wall.loc[(task, comp_tool), "wall_s_mean"]
+            cr = rss.loc[(task, comp_tool), "peak_rss_mb_mean"]
+            speedup = cw / gfc_wall_mean if gfc_wall_mean else None
+            mem_ratio = cr / gfc_rss_mean if gfc_rss_mean else None
+            wins_speed = speedup is not None and speedup > 1.0
+            wins_mem = mem_ratio is not None and mem_ratio > 1.0
+            verdict = ("gfc wins" if wins_speed and wins_mem
+                       else "speed only" if wins_speed
+                       else "memory only" if wins_mem
+                       else "loses")
+            rows.append({
+                "task": task,
+                "competitor": comp_tool,
+                "gfc_wall_s": f"{gfc_wall_mean:.2f}",
+                "comp_wall_s": f"{cw:.2f}",
+                "speedup_x": f"{speedup:.2f}x" if speedup else "—",
+                "gfc_rss_mb": f"{gfc_rss_mean:.2f}",
+                "comp_rss_mb": f"{cr:.2f}",
+                "mem_ratio_x": f"{mem_ratio:.2f}x" if mem_ratio else "—",
+                "verdict": verdict,
+            })
+    return pd.DataFrame(rows)
+
+
+def render_per_pair_markdown(table: pd.DataFrame) -> str:
+    """Markdown for the per-(task, competitor) table — one row per
+    pairwise comparison so the paper can read 'gfc beats AGAT 13x on
+    T4' off the table without doing arithmetic."""
+    cols = ["task", "competitor", "gfc_wall_s", "comp_wall_s",
+            "speedup_x", "gfc_rss_mb", "comp_rss_mb", "mem_ratio_x",
+            "verdict"]
+    headers = ["Task", "Competitor", "gfc wall (s)", "Comp wall (s)",
+               "Speedup (>1 = gfc faster)", "gfc RSS (MB)",
+               "Comp RSS (MB)", "Mem ratio (>1 = gfc smaller)",
+               "Verdict"]
+    lines = ["| " + " | ".join(headers) + " |",
+             "|" + "|".join("---" for _ in headers) + "|"]
+    for _, row in table.iterrows():
+        lines.append("| " + " | ".join(str(row[c]) for c in cols) + " |")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     if not _RAW.exists():
         print(f"[error] {_RAW} missing. Run run_bench.sh + collect_results.py first.",
@@ -182,6 +240,7 @@ def main() -> int:
             df[col] = df[col].fillna("").astype(str)
 
     table = build_summary(df)
+    pair_table = build_per_pair(df)
     _FIG.mkdir(parents=True, exist_ok=True)
 
     md_path = _FIG / "summary_table.md"
@@ -189,9 +248,20 @@ def main() -> int:
     md_path.write_text(render_markdown(table))
     table.to_csv(csv_path, index=False)
 
+    pair_md = _FIG / "summary_per_pair.md"
+    pair_csv = _FIG / "summary_per_pair.csv"
+    pair_md.write_text(render_per_pair_markdown(pair_table))
+    pair_table.to_csv(pair_csv, index=False)
+
     print(f"[done] wrote {md_path}", file=sys.stderr)
     print(f"[done] wrote {csv_path}", file=sys.stderr)
-    print("\n--- summary ---", file=sys.stderr)
+    print(f"[done] wrote {pair_md}", file=sys.stderr)
+    print(f"[done] wrote {pair_csv}", file=sys.stderr)
+    print("\n--- per-pair summary (one row per competitor; >1x = gfc wins) ---",
+          file=sys.stderr)
+    print(render_per_pair_markdown(pair_table))
+    print("\n--- headline summary (one row per task, fastest competitor only) ---",
+          file=sys.stderr)
     print(render_markdown(table))
     return 0
 

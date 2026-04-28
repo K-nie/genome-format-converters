@@ -33,6 +33,7 @@ mkdir -p "$bench_dir"
 
 # Header row
 python "$repo/benchmarks/bench_one.py" --header > "$out"
+echo "[T1 trace] after header: $(wc -l < "$out") lines" >&2
 
 # ---------- tool 1: gfc -----------------------------------------------------
 gfc_version="$(gfc --version | cut -d' ' -f2)"
@@ -44,6 +45,7 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
                --output-dir '$out_dir' --pattern '$GFC_BENCH_VCF_PATTERN' --force" \
         --notes "fixture=${GFC_BENCH_VCF_PATTERN}" \
         >> "$out"
+    echo "[T1 trace] after gfc rep $rep: $(wc -l < "$out") lines" >&2
 done
 
 # ---------- tool 2: EIGENSOFT convertf (Stage 3 reference) ------------------
@@ -103,6 +105,7 @@ if command -v convertf >/dev/null 2>&1; then
                    convertf -p '$out_dir/par.PACKEDPED.EIGENSTRAT'" \
             --notes "via plink2 --make-bed (PACKEDPED) → convertf EIGENSTRAT" \
             >> "$out"
+        echo "[T1 trace] after convertf rep $rep: $(wc -l < "$out") lines" >&2
     done
 else
     echo "[skip] T1 convertf (EIGENSOFT convertf not on PATH; install eigensoft from bioconda)" >&2
@@ -114,5 +117,6 @@ fi
 # EIGENSTRAT spec — the comparison was therefore meaningless. convertf is
 # the correct reference.
 
-echo "[done] T1 rows written to $out" >&2
+echo "[done] T1 rows written to $out ($(wc -l < "$out") lines incl. header)" >&2
 python "$repo/benchmarks/check_correctness.py" --task T1 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T1 correctness check failed (non-fatal)" >&2
+echo "[T1 trace] after check_correctness: $(wc -l < "$out") lines" >&2

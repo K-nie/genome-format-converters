@@ -130,7 +130,12 @@ def main() -> None:
         f"{wall_s:.4f}", f"{peak_rss_mb:.2f}",
         str(rc), args.correct, args.notes,
     ]
-    print("\t".join(row))
+    # flush=True so the row hits disk before this process exits — protects
+    # against a SIGTERM / OOM kill mid-shutdown that would otherwise drop a
+    # block-buffered stdout write to the per-task TSV. Run 136838 lost
+    # T1's gfc and convertf-rep1 rows in a way consistent with this; the
+    # explicit flush eliminates that class of failure.
+    print("\t".join(row), flush=True)
 
 
 if __name__ == "__main__":
