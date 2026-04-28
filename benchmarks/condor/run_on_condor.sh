@@ -43,6 +43,18 @@ set +u
 conda activate gfc-bench
 set -u
 
+# Install gfc from THIS checkout in editable mode so the cluster runs the
+# converters as currently committed on bench/stage1-fairness. Without this
+# the env's pip-installed gfc 0.1.5 (frozen at env-creation time) wins on
+# PATH and every src/ optimisation since 0.1.5 is silently bypassed —
+# exactly what made T3/T4/T5/T7 wall numbers stuck across runs 136838 and
+# 136846 even after commits 7c0c71d, 1d1fd14, ef14752, 8494f14 landed.
+# `--no-deps` keeps us from re-resolving the conda env's already-installed
+# pysam / cyvcf2 / biopython etc.
+echo "[info] reinstalling gfc from local checkout (editable, no deps)" >&2
+pip install -e . --no-deps --quiet --force-reinstall 2>&1 | tail -3 || \
+    echo "[warn] pip install -e . failed; cluster will run conda's pinned gfc" >&2
+
 echo "[info] PATH=$PATH"
 echo "[info] python=$(command -v python)"
 echo "[info] gfc=$(command -v gfc)"
