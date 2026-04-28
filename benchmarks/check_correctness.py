@@ -113,6 +113,39 @@ _REFERENCE_TOOL = {
 }
 
 
+# --- Methods footnote constants -------------------------------------------
+# When a check_t* function returns "0" for gfc, it means gfc's output is not
+# byte/structurally identical to the reference. For some tasks the divergence
+# is genuinely semantic (different but defensible design choices in each
+# tool); the bench cannot adjudicate which is "right", so we record the
+# reason here and let the paper's Methods section cite it. Each _REASON_T*
+# string is a one-paragraph footnote intended to be lifted verbatim into
+# Methods (proposal-writer polishes the prose).
+_REASON_T1 = (
+    "T1 (VCF -> EIGENSTRAT): gfc and convertf may diverge on the chromosome "
+    "encoding (gfc preserves the VCF CHROM literal, e.g. 'chr22'; convertf "
+    "rewrites to its integer-only EIGENSTRAT contract, e.g. '22'). The .geno "
+    "and .ind payloads are byte-identical when both tools are pointed at the "
+    "same chrom-mapping; the .snp file differs only in the chrom column. We "
+    "report correct=0 honestly rather than canonicalising the chrom column "
+    "post-hoc, because the EIGENSTRAT spec does not mandate either rendering "
+    "and downstream tools (smartpca, ADMIXTURE) accept both."
+)
+
+_REASON_T3 = (
+    "T3 (FASTA+GFF -> GenBank): gfc uses Biopython's GenBank writer; the "
+    "py-ref baseline also uses Biopython but with a different feature "
+    "qualifier order. EMBOSS-seqret renders the same content with different "
+    "line-wrap, FEATURES section ordering, and qualifier formatting. The "
+    "GenBank flat-file format does not mandate a single canonical rendering, "
+    "so byte-identity across implementations is impossible. The comparator "
+    "uses Bio.SeqIO to verify structural equivalence: identical record count "
+    "and total sequence length. correct=0 here means the structural invariant "
+    "actually broke (record loss or sequence corruption), not cosmetic "
+    "rendering differences."
+)
+
+
 def _rep1_dir(bench_dir: Path, task: str, tool: str) -> Optional[Path]:
     """Resolve the rep1 directory for a (task, tool) pair, or None if missing."""
     prefix = _TOOL_TO_DIR.get((task, tool))
@@ -150,7 +183,16 @@ def _multi_shasum(paths: list[Path]) -> Optional[str]:
 
 
 def check_t1(gfc_dir: Path, ref_dir: Path) -> str:
-    """T1: shasum (.geno + .snp + .ind) match convertf reference."""
+    """T1: shasum (.geno + .snp + .ind) match convertf reference.
+
+    Divergence axis (Option II — accept correct=0 with Methods footnote,
+    see _REASON_T1):
+      gfc preserves the VCF CHROM literal in the .snp file; convertf
+      rewrites to its integer-only convention. The .geno and .ind payloads
+      are byte-identical when both tools see the same chrom-mapping. We
+      keep the strict triplet-shasum contract so a real corruption in
+      .geno or .ind still fails loudly.
+    """
     triplet_exts = (".geno", ".snp", ".ind")
     gfc_files = [p for ext in triplet_exts for p in gfc_dir.glob(f"*{ext}")]
     ref_files = [p for ext in triplet_exts for p in ref_dir.glob(f"*{ext}")]
@@ -178,7 +220,17 @@ def check_t2(gfc_dir: Path, ref_dir: Path) -> str:
 
 
 def check_t3(gfc_dir: Path, ref_dir: Path) -> str:
-    """T3: structural — same record count + total seq length via Bio.SeqIO."""
+    """T3: structural — same record count + total seq length via Bio.SeqIO.
+
+    Divergence axis (Option II — accept correct=0 with Methods footnote,
+    see _REASON_T3):
+      The GenBank flat-file format does not mandate a canonical rendering,
+      so byte-identity across implementations is impossible (line-wrap,
+      qualifier order, FEATURES section ordering all legitimately differ).
+      We compare on the structural invariant only — record count + total
+      seq length via Bio.SeqIO — so correct=0 here flags a real loss of
+      records or sequence content, not cosmetic rendering drift.
+    """
     try:
         from Bio import SeqIO
     except ImportError:
