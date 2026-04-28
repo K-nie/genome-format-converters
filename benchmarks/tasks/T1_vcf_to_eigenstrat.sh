@@ -52,7 +52,15 @@ done
 # stage (see benchmarks/Dockerfile). When it is on PATH, run it through a
 # par-file generated from the input VCF; plink2 stages the VCF as PED first.
 if command -v convertf >/dev/null 2>&1; then
-    cf_version="$(convertf 2>&1 | head -1 | tr -s ' ' | cut -d' ' -f2 || echo unknown)"
+    # convertf has no `--version`; called bare it prints `fatalx:\nparameter
+    # p compulsory` and exits non-zero. Older code parsed `head -1 | cut`
+    # which captured `fatalx:` and leaked a newline into the TSV (run
+    # 136834: row split across two physical lines). Pull the version from
+    # the active conda env's eigensoft package metadata instead — single
+    # line, no shell errors, robust to convertf's lack of a version flag.
+    cf_version="$(conda list eigensoft 2>/dev/null \
+        | awk '$1=="eigensoft" {print "v"$2; exit}')"
+    : "${cf_version:=unknown}"
     vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
     stem="$(basename "$vcf_input")"
     stem="${stem%.vcf.gz}"; stem="${stem%.vcf}"; stem="${stem%.bcf}"

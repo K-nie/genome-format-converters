@@ -44,14 +44,19 @@ if command -v gff3ToGenePred >/dev/null 2>&1 && command -v genePredToBed >/dev/n
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         out_dir="$bench_dir/ucsc_rep${rep}"
         mkdir -p "$out_dir"
+        # Per-file `&&` chains so genePredToBed only runs when its input
+        # exists; trailing `true` makes the whole loop exit 0 even when
+        # one file's GFF3 is rejected by gff3ToGenePred (UCSC's parser is
+        # stricter than the GFF3 spec). Per-file failures are captured by
+        # bench_one.py's per-run stderr log.
         python "$repo/benchmarks/bench_one.py" \
             --task "T5" --tool "ucsc-chain" --version "$ucsc_version" \
             --replicate "$rep" \
             --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      gff3ToGenePred \"\$f\" '$out_dir/'\$stem.gp; \
-                      genePredToBed '$out_dir/'\$stem.gp '$out_dir/'\$stem.bed; \
-                   done" \
+                      gff3ToGenePred \"\$f\" '$out_dir/'\$stem.gp \
+                        && genePredToBed '$out_dir/'\$stem.gp '$out_dir/'\$stem.bed; \
+                   done; true" \
             --notes "gff3ToGenePred + genePredToBed chain" \
             >> "$out"
     done

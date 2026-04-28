@@ -27,24 +27,62 @@ import sys
 import time
 
 
-def run_once(cmd: str) -> tuple[float, int, int]:
+def run_once(cmd: str, *, task: str, tool: str,
+             replicate: int) -> tuple[float, int, int]:
     """Run `cmd` under a shell. Return (wall_seconds, peak_rss_bytes, exit_code).
 
     Uses ``os.wait4`` so we get the rusage of the specific child, not the
     accumulated rusage of all children since process start (which is what
     ``resource.getrusage(RUSAGE_CHILDREN)`` would give).
+
+    Subprocess stderr is streamed to a per-run log file under
+    ``$GFC_BENCH_LOG_DIR`` (default /tmp/gfc_bench_cmd_logs/). On non-zero
+    exit, the tail of that log is echoed to this process's own stderr so
+    it shows up in the Condor ``bench.<id>.err`` capture and the failure
+    is debuggable without having to ssh to the execute slot. Successful
+    runs delete the log file to avoid clutter.
+
+    Streaming to a file rather than capturing via subprocess.PIPE keeps
+    the parent's RSS low (no PIPE buffering in this process), so the
+    benchmarked child's RSS measurement isn't perturbed.
     """
+    log_dir = os.environ.get("GFC_BENCH_LOG_DIR", "/tmp/gfc_bench_cmd_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"{task}_{tool}_rep{replicate}.err")
+
     start = time.perf_counter()
-    # shell=True so the command string can use pipes / redirects when
-    # tasks need them (e.g. `bcftools view | awk | gzip > out`).
-    proc = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    _pid, status, ru = os.wait4(proc.pid, 0)
-    elapsed = time.perf_counter() - start
+    with open(log_path, "wb") as err_log:
+        # shell=True so the command string can use pipes / redirects when
+        # tasks need them (e.g. `bcftools view | awk | gzip > out`).
+        proc = subprocess.Popen(
+            cmd, shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=err_log,
+        )
+        _pid, status, ru = os.wait4(proc.pid, 0)
+        elapsed = time.perf_counter() - start
     rc = os.waitstatus_to_exitcode(status)
     # Tell Popen the child is reaped so its destructor doesn't complain.
     proc.returncode = rc
+
+    if rc != 0:
+        try:
+            with open(log_path, errors="replace") as f:
+                tail = f.read()[-2000:]
+        except OSError:
+            tail = "(could not read stderr log)"
+        print(
+            f"[FAIL] {task}/{tool}/rep{replicate} exit={rc}\n"
+            f"---- stderr tail ({log_path}) ----\n"
+            f"{tail}\n"
+            f"---- end {task}/{tool}/rep{replicate} stderr ----",
+            file=sys.stderr,
+        )
+    else:
+        try:
+            os.unlink(log_path)
+        except OSError:
+            pass
 
     # ru_maxrss units differ by platform: KB on Linux, bytes on macOS/BSD.
     if sys.platform == "darwin" or sys.platform.startswith("freebsd"):
@@ -83,7 +121,9 @@ def main() -> None:
     if missing:
         ap.error(f"missing required args for a measurement run: {', '.join(missing)}")
 
-    wall_s, peak_rss_b, rc = run_once(args.cmd)
+    wall_s, peak_rss_b, rc = run_once(
+        args.cmd, task=args.task, tool=args.tool, replicate=args.replicate,
+    )
     peak_rss_mb = peak_rss_b / (1024 * 1024)
     row = [
         args.task, args.tool, args.version, str(args.replicate),
