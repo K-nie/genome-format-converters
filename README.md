@@ -16,6 +16,7 @@ directory (or single file), point it at an output directory (or single file
 ## Table of Contents
 
 - [Features](#features)
+- [Benchmark](#benchmark)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Command Reference](#command-reference)
@@ -36,7 +37,45 @@ directory (or single file), point it at an output directory (or single file
 - **Uniform interface** — every subcommand accepts `--input-dir` / `--output-dir` (batch mode) or `--input` / `--output` (single-file mode, with `-` for stdin/stdout where it makes sense).
 - **Batch processing** — convert every file of a recognised type in a directory in one call. Optional `--pattern GLOB` and `--threads N` for parallel jobs.
 - **Fails loudly** — converters raise on malformed input and exit non-zero so pipelines can detect failure. Progress and warnings go to stderr; data goes to stdout or the output path.
-- **Lightweight** — pure-Python, depends only on Biopython, pysam, bcbio-gff, and pandas.
+- **Lightweight** — pure-Python, depends on Biopython, pysam, cyvcf2, bcbio-gff, numpy, and pandas.
+
+## Benchmark
+
+We compared `gfc` against established single-purpose tools across 8 conversion
+tasks on production data (1000 Genomes chr22 biallelic SNPs for VCF tasks;
+20-species Y1000+ slice for GFF tasks). Production run: 10 replicates per
+(task, tool), HTCondor cluster, sd < 2% on every task.
+
+**Three head-to-head wins** (gfc faster *and* lower memory):
+
+| Task | vs Competitor | Speedup | Memory |
+|---|---|---|---|
+| T1 VCF→EIGENSTRAT | EIGENSOFT convertf | **1.29× faster** | **22.07× less RAM** |
+| T4 GFF3→GTF | AGAT | **12.93× faster** | 1.09× less RAM |
+| T5 GFF3→BED12 | AGAT | **13.26× faster** | 1.10× less RAM |
+
+**Speed wins** (faster, more RAM):
+
+| Task | vs Competitor | Speedup |
+|---|---|---|
+| T3 FASTA+GFF→GenBank | EMBOSS-seqret | **7.88× faster** |
+| T8 pseudohaploid VCF | bcftools+python | **5.64× faster** |
+
+**Memory win** (slower, much less RAM):
+
+| Task | vs Competitor | Memory |
+|---|---|---|
+| T2 VCF→PLINK | plink2 | **22.08× less RAM** (gfc 60 MB vs plink2 1.3 GB on chr22) |
+
+`gfc` loses on speed to optimised C tools (plink2 / plink1.9 on T2;
+gffread on T4; ucsc-chain on T5; pyhmmer on T6) and to bare-bones
+Biopython references on small synthetic fixtures (T3, T7). The trade-off
+is documented as the cost of CLI scaffolding (argparse, validation,
+batch iteration) over a 50-line ad-hoc script.
+
+Full results, plots, and Methods footnotes:
+[`docs/manuscript/gfc_application_note_2026-04-29.md`](docs/manuscript/gfc_application_note_2026-04-29.md).
+Reproducibility: `bash benchmarks/run_bench.sh` after `pip install -e .`.
 
 ## Installation
 
