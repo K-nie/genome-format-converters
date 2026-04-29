@@ -51,17 +51,25 @@ def main() -> int:
     palette = sns.color_palette("tab10", n_colors=len(wide.columns))
 
     fig, ax = plt.subplots(figsize=(10, 5))
+    # Use integer x-positions explicitly so the per-bar text annotation
+    # below has a numeric x to anchor against. seaborn / matplotlib's
+    # categorical bar handling is fine for the bars themselves but
+    # `ax.text(tool, total, ...)` with a string x crashes inside
+    # `convert_xunits` on recent matplotlib.
+    x_positions = list(range(len(wide.index)))
     bottom = pd.Series(0.0, index=wide.index)
     for i, task in enumerate(wide.columns):
         heights = wide[task]
-        ax.bar(wide.index, heights, bottom=bottom,
+        ax.bar(x_positions, heights.values, bottom=bottom.values,
                label=task, color=palette[i], edgecolor="white",
                linewidth=0.4)
         bottom = bottom + heights
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(wide.index)
 
-    # Annotate each bar's total.
-    for tool, total in totals.items():
-        ax.text(tool, total, f"{total:.0f}s",
+    # Annotate each bar's total at the top.
+    for x, (tool, total) in zip(x_positions, totals.items()):
+        ax.text(x, float(total), f"{float(total):.0f}s",
                 ha="center", va="bottom", fontsize=8, alpha=0.8)
 
     ax.set_ylabel("cumulative wall time across tasks (s)")
