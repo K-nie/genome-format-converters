@@ -124,27 +124,40 @@ def main() -> int:
     ax.set_xticklabels(new_xticklabels)
 
     # Annotate significant bars with an asterisk above the bar.
-    # seaborn lays out bars in hue_order; iterate the patches and map
-    # each to (task, tool) via container index.
+    # seaborn's modern barplot returns dense containers (only the
+    # bars that have data for that hue, not one bar per x position),
+    # so we can't index by task position. Map each bar back to its
+    # task via the x-tick at the bar's x-centre instead.
     if sig_lookup:
         x_tasks = [t.get_text().rstrip("*") for t in ax.get_xticklabels()]
+        x_centres = ax.get_xticks()
+        # Tolerance: half a bar group's worth of x.
+        bar_w = 0.0
+        for cont in ax.containers:
+            for bar in cont:
+                bar_w = max(bar_w, bar.get_width())
+        tol = max(bar_w, 0.5)
         for h, hue in enumerate(competitor_order):
             if h >= len(ax.containers):
                 continue
-            container = ax.containers[h]
-            for i, bar in enumerate(container):
-                if i >= len(x_tasks):
+            for bar in ax.containers[h]:
+                xc = bar.get_x() + bar.get_width() / 2
+                # Find nearest x-tick.
+                idx = int(min(range(len(x_centres)),
+                              key=lambda j: abs(x_centres[j] - xc)))
+                if idx >= len(x_tasks):
                     continue
-                task = x_tasks[i]
+                if abs(x_centres[idx] - xc) > tol:
+                    continue
+                task = x_tasks[idx]
                 if not sig_lookup.get((task, hue), False):
                     continue
                 height = bar.get_height()
                 if not (height and height > 0):
                     continue
-                ax.text(bar.get_x() + bar.get_width() / 2,
-                        height * 1.04, "*",
+                ax.text(xc, height * 1.06, "*",
                         ha="center", va="bottom",
-                        fontsize=10, color="black",
+                        fontsize=11, color="black",
                         clip_on=False)
 
     title = ("Wall-time ratio (competitor / gfc) per benchmark task; "
