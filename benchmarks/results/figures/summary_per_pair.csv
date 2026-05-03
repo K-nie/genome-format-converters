@@ -1,0 +1,13 @@
+task,competitor,gfc_wall_s,comp_wall_s,speedup_x,gfc_rss_mb,comp_rss_mb,mem_ratio_x,verdict
+T1,convertf,259.25,334.93,1.29x,59.90,1321.90,22.07x,gfc wins
+T2,plink1.9,311.41,39.93,0.13x,59.91,70.35,1.17x,memory only
+T2,plink2,311.41,21.93,0.07x,59.91,1322.70,22.08x,memory only
+T3,EMBOSS-seqret,8.13,64.07,7.88x,58.43,12.21,0.21x,speed only
+T3,py-ref,8.13,6.19,0.76x,58.43,47.67,0.82x,loses
+T4,AGAT,8.11,104.85,12.93x,58.02,63.44,1.09x,gfc wins
+T4,gffread,8.11,4.80,0.59x,58.02,12.19,0.21x,loses
+T5,AGAT,7.85,104.08,13.26x,57.71,63.57,1.10x,gfc wins
+T5,ucsc-chain,7.85,6.64,0.85x,57.71,12.24,0.21x,loses
+T6,pyhmmer,7.69,2.20,0.29x,58.12,21.48,0.37x,loses
+T7,py-ref,7.68,4.98,0.65x,58.15,42.44,0.73x,loses
+T8,bcftools-pyref,332.93,1877.07,5.64x,60.03,14.26,0.24x,speed only
