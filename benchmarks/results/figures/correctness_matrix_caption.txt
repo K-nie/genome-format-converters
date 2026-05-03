@@ -1,0 +1,20 @@
+Figure 5 — Output correctness against per-task reference.
+
+Cell encoding (4 categories):
+  pass  (Y)   : strict byte / structural identity against reference.
+  structural-divergence (eq) : documented rendering difference; not a defect (see per-task footnotes below).
+  skip  (n/a) : intentionally out of scope (e.g. T8 cross-RNG byte-
+                equivalence is impossible by design).
+  unchecked (?) : comparator could not produce a verdict (no reference,
+                OSError, or malformed input).
+
+Per-task divergence footnotes (lifted verbatim from
+benchmarks/check_correctness.py):
+
+  [T1] T1 (VCF -> EIGENSTRAT): gfc and convertf may diverge on the chromosome encoding (gfc preserves the VCF CHROM literal, e.g. 'chr22'; convertf rewrites to its integer-only EIGENSTRAT contract, e.g. '22'). The .geno and .ind payloads are byte-identical when both tools are pointed at the same chrom-mapping; the .snp file differs only in the chrom column. We report correct=0 honestly rather than canonicalising the chrom column post-hoc, because the EIGENSTRAT spec does not mandate either rendering and downstream tools (smartpca, ADMIXTURE) accept both.
+
+  [T2] T2 (VCF -> PLINK .bed): gfc and plink1.9 produce structurally distinct outputs from the same VCF input. Three independent divergence axes were confirmed locally on tests/test_data/tiny.vcf: (i) gfc skips indels by default and writes only biallelic SNPs (2/3 variants for tiny.vcf), while plink1.9 retains all variants by default; (ii) gfc synthesises variant IDs as '<chrom>_<pos>' when the VCF ID is '.', while plink1.9 preserves the literal '.'; (iii) gfc and plink1.9 select different A1/A2 allele assignments (gfc uses VCF REF/ALT directly; plink1.9 applies minor-allele-first reordering). Consequently the .bim text and the .bed binary payload differ in length, content, and genotype encoding direction. None of these divergences is a bug in either tool; they are documented design choices. We keep the strict byte-identity comparator so any regression in gfc's own .bed output (relative to itself across versions) would surface, and accept correct=0 vs plink1.9 with this footnote.
+
+  [T3] T3 (FASTA+GFF -> GenBank): gfc uses Biopython's GenBank writer; the py-ref baseline also uses Biopython but with a different feature qualifier order. EMBOSS-seqret renders the same content with different line-wrap, FEATURES section ordering, and qualifier formatting. The GenBank flat-file format does not mandate a single canonical rendering, so byte-identity across implementations is impossible. The comparator uses Bio.SeqIO to verify structural equivalence: identical record count and total sequence length. correct=0 here means the structural invariant actually broke (record loss or sequence corruption), not cosmetic rendering differences.
+
+  [T4] T4 (GFF3 -> GTF): gfc and gffread implement two defensible but distinct GFF3-to-GTF translations. Confirmed locally on tests/test_data/tiny.gff3: (i) gfc emits a faithful 1:1 row mapping including 'gene' and 'mRNA' feature rows; gffread elides gene rows and renames 'mRNA' to 'transcript'. (ii) gffread fuses adjacent exon and CDS spans into a single feature when they abut (101-150 + 151-200 -> 101-200); gfc preserves the original GFF3 spans verbatim. (iii) Trailing-semicolon and attribute-key order differ. gffread's normalisations are transcript-centric and standard for transcript-isoform pipelines; gfc's faithful mapping is standard for general feature-table round-tripping. Neither is the canonical GTF rendering. The comparator already canonicalises attribute order via _normalise_gtf_line; correct=0 reflects the deeper structural difference (line count, feature types, span boundaries) and is documented rather than hidden behind a span-merging rewrite.
