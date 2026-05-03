@@ -171,3 +171,33 @@ We **are** claiming:
 2. Python's global interpreter lock means per-file parallelism (`--threads`) is the realistic ceiling; we're not going to out-parallelise `bcftools --threads`.
 3. Windows support is subset-only (pure-Python 20/30 subcommands). Flag this explicitly; don't pretend otherwise.
 4. The `--also-plink` sidecar on EIGENSTRAT is text `.ped` / `.map`; for binary use the standalone `vcf-to-plink`. Reviewers will ask which is "primary"; document that the binary format is canonical and `.ped` is convenience.
+
+---
+
+## 11. Phase 4 comparator additions (2026-05-03)
+
+Driven by `docs/LITERATURE_COMPARATORS_2026-05-03.md`. No TSV schema change — every new comparator reuses the existing `task tool version replicate wall_s peak_rss_mb exit_code correct notes` columns. New `tool` strings and per-task dir prefixes are registered in `benchmarks/check_correctness.py::_TOOL_TO_DIR`.
+
+| Task | Comparator added | Tier | TSV `tool` | Dir prefix | Citation |
+|---|---|---|---|---|---|
+| T1 | BioConvert vcf2eigenstrat | secondary | `bioconvert` | `bioconvert` | Caro 2023 NARGAB lqad074 |
+| T2 | bcftools view + plink --bcf | secondary | `bcftools` | `bcftools` | Danecek 2021 GigaScience giab008 |
+| T2 | BioConvert vcf2plink | secondary | `bioconvert` | `bioconvert` | Caro 2023 NARGAB lqad074 |
+| T3 | NCBI table2asn | PRIMARY | `table2asn` | `table2asn` | Sayers 2023 NAR D141 |
+| T3 | EMBLmyGFF3 | PRIMARY | `EMBLmyGFF3` | `emblmygff3` | Norling 2018 BMC Res Notes 11:584 |
+| T3 | py-ref (existing) | DEMOTED | `py-ref` | `pyref` | (naive baseline; pedagogical) |
+| T4 | BioConvert gff3:gtf | secondary | `bioconvert` | `bioconvert` | Caro 2023 NARGAB lqad074 |
+| T5 | bedops convert2bed | secondary | `bedops` | `bedops` | Neph 2012 Bioinformatics 28:1919 |
+| T5 | BioConvert gff3:bed | secondary | `bioconvert` | `bioconvert` | Caro 2023 NARGAB lqad074 |
+| T6 | Bio.SearchIO.HmmerIO | secondary | `biopython` | `biopython` | Cock 2009 Bioinformatics 25:1422 |
+| T7 | OrthoFinder cold start | PRIMARY | `orthofinder` | `orthofinder` | Emms 2019 Genome Biol 20:238 |
+| T7 | Proteinortho | secondary | `proteinortho` | `proteinortho` | Lechner 2011 / 2023 |
+| T8 | bcftools consensus -H 1pIu | PRIMARY | `bcftools` | `bcftools` | Danecek 2021 GigaScience giab008 |
+| T8 | ANGSD --doHaploCall | PRIMARY | `angsd` | `angsd` | Korneliussen 2014 BMC Bioinf 15:356 |
+| T8 | bcftools-pyref (existing) | DEMOTED | `bcftools-pyref` | `bcftoolsref` | (naive baseline; pedagogical) |
+
+T7 framing: gfc reads a saved Orthogroups.tsv (cheap; ms-scale), OrthoFinder runs the full DIAMOND + MCL pipeline cold (slow; minutes-hours). The comparison answers the actual use case: "post-hoc per-OG FASTA reconstruction without re-running orthology inference." gfc is faster *because* it skips the inference step that OrthoFinder unavoidably re-runs.
+
+T8 framing: bcftools `consensus -H 1pIu` is the htslib-native pseudohaploid path. Replaces the unpublished `t8_bcftools.py` wrapper as the named competitor; the wrapper script is retained as a labelled naive baseline. ANGSD operates on VCF via `-vcf-gl`; output is per-sample haplo-call positions (format-only correctness, not byte-equivalent — different RNG streams, by design).
+
+Tool install status as of 2026-05-03 on GLBRC `gfc-bench` env: `orthofinder` 2.5.x present; `bcftools` 1.21 present; `pyhmmer` 0.12.0, `Biopython` 1.87 importable. MISSING (need install before primary cluster run): `bioconvert`, `table2asn`, `EMBLmyGFF3`, `angsd`, `convert2bed` (bedops), `proteinortho`/`proteinortho6`. See `benchmarks/condor/bench_smoke_t4_bioconvert.sub` for the smallest smoke validation (T4 + BioConvert, n=2).
