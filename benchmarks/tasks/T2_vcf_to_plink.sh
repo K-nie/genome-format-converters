@@ -70,6 +70,41 @@ else
     echo "[skip] T2 plink1.9 (plink v1 not on PATH)" >&2
 fi
 
+# ---------- bcftools direct invocation (secondary) -------------------------
+# Danecek 2021 (GigaScience giab008) is a citable competitor for the
+# VCF -> PLINK path: bcftools+plink chain via `bcftools view` then
+# `plink --bcf ... --make-bed`. We invoke bcftools to filter to
+# biallelic SNPs first (mirroring gfc's default behaviour), then
+# plink1.9 to materialise the .bed/.bim/.fam triplet. This row times
+# the htslib-native chain end-to-end and is citable on its own
+# (Danecek 2021).
+if command -v bcftools >/dev/null 2>&1 && command -v plink >/dev/null 2>&1; then
+    bcftools_version="$(bcftools --version 2>&1 | head -1 | awk '{print $NF}')"
+    : "${bcftools_version:=unknown}"
+    vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
+    stem="$(basename "$vcf_input")"
+    stem="${stem%.vcf.gz}"; stem="${stem%.vcf}"; stem="${stem%.bcf}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bcftools_rep${rep}"
+        mkdir -p "$out_dir"
+        # `bcftools view -m2 -M2 -v snps` keeps only biallelic SNPs to
+        # match gfc's default. Pipe to plink via stdin so no
+        # intermediate file lands on disk (closer to a streaming
+        # comparison). plink1.9's `--bcf /dev/stdin` accepts the
+        # streamed BCF.
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T2" --tool "bcftools" --version "$bcftools_version" \
+            --replicate "$rep" \
+            --cmd "bcftools view -Ob -m2 -M2 -v snps '$vcf_input' \
+                   | plink --bcf /dev/stdin --threads 1 --allow-extra-chr \
+                          --make-bed --out '$out_dir/$stem' --silent" \
+            --notes "bcftools view -m2 -M2 -v snps | plink --bcf (Danecek 2021)" \
+            >> "$out"
+    done
+else
+    echo "[skip] T2 bcftools direct (bcftools or plink missing)" >&2
+fi
+
 # ---------- BioConvert (framework comparator) -----------------------------
 # BioConvert (Caro 2023, NAR Genomics & Bioinformatics) is the only
 # multi-format converter framework with a primary publication in the
