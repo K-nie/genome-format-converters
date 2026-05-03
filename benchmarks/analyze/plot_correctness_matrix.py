@@ -149,41 +149,76 @@ def main() -> int:
     df1["category"] = df1["correct"].apply(_classify)
     df1["code"] = df1["category"].map(CAT_TO_CODE)
 
-    matrix = df1.pivot_table(index="task", columns="tool",
-                             values="code", aggfunc="first")
-    cat_matrix = df1.pivot_table(index="task", columns="tool",
-                                 values="category", aggfunc="first")
+    # Build a strict (task x tool) full grid. Every (task, tool) combination
+    # exists; cells with no run are flagged as "missing" and rendered as
+    # white space with no glyph. The previous pivot_table path produced a
+    # grid where matplotlib's auto-aspect imshow stretched cells unevenly
+    # depending on column density — switching to pcolormesh on an
+    # explicitly indexed grid plus aspect="equal" guarantees uniform cell
+    # pitch across the whole figure.
+    tasks = sorted(df1["task"].unique())
+    tools = sorted(df1["tool"].unique())
+    cat_matrix = (df1.pivot_table(index="task", columns="tool",
+                                  values="category", aggfunc="first")
+                     .reindex(index=tasks, columns=tools))
+    # Encode: integer codes 0..len(CATEGORIES)-1 for the four real
+    # categories; NaN ("missing") survives in the masked array so
+    # pcolormesh leaves it transparent.
+    code_grid = np.full((len(tasks), len(tools)), np.nan, dtype=float)
+    for r, t in enumerate(tasks):
+        for c, tool in enumerate(tools):
+            cat = cat_matrix.iat[r, c]
+            if isinstance(cat, str) and cat in CAT_TO_CODE:
+                code_grid[r, c] = CAT_TO_CODE[cat]
 
     set_bioinformatics_style()
     FIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=double_col_size(height_in=4.0))
+    # Size figure proportional to the grid so cells render square. Cell
+    # pitch = 0.55 in works at 300 dpi for both screen and print.
+    cell_in = 0.55
+    fig_w = max(8.0, len(tools) * cell_in + 2.5)
+    fig_h = max(3.5, len(tasks) * cell_in + 1.5)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     cmap = ListedColormap([CAT_COLORS[c] for c in CATEGORIES])
-    # Use integer codes 0..len(CATEGORIES)-1; mask NaN cells (tool did
-    # not run that task) so they render as the axes face colour.
-    masked = np.ma.masked_invalid(matrix.values.astype(float))
-    im = ax.imshow(masked, cmap=cmap, vmin=-0.5,
-                   vmax=len(CATEGORIES) - 0.5, aspect="auto")
+    cmap.set_bad(color="white", alpha=0.0)  # missing cells: transparent.
+    masked = np.ma.masked_invalid(code_grid)
 
-    ax.set_xticks(range(matrix.shape[1]))
-    ax.set_xticklabels(matrix.columns, rotation=45, ha="right")
-    ax.set_yticks(range(matrix.shape[0]))
-    ax.set_yticklabels(matrix.index)
+    # pcolormesh draws cells between explicit edge coordinates; this lets
+    # us put a visible white gutter between every cell so adjacent
+    # categorical cells in the same column never read as one tall block.
+    edges_x = np.arange(len(tools) + 1)
+    edges_y = np.arange(len(tasks) + 1)
+    ax.pcolormesh(edges_x, edges_y, masked, cmap=cmap,
+                  vmin=-0.5, vmax=len(CATEGORIES) - 0.5,
+                  edgecolors="white", linewidth=1.5)
+    ax.set_aspect("equal")
+    # Invert y so T1 sits at the top (reading order).
+    ax.invert_yaxis()
+
+    # Tick positions at cell centers (pcolormesh uses cell edges).
+    ax.set_xticks(np.arange(len(tools)) + 0.5)
+    ax.set_xticklabels(tools, rotation=45, ha="right")
+    ax.set_yticks(np.arange(len(tasks)) + 0.5)
+    ax.set_yticklabels(tasks)
     ax.set_xlabel("tool")
     ax.set_ylabel("benchmark task")
     ax.set_title("Output correctness against per-task reference "
                  "(4-state categorical; see Methods for divergence notes)")
+    # Hide axis spines so the grid reads as a clean matrix, not a chart.
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.tick_params(length=0)
 
     # Annotate each cell with the categorical glyph; skip masked cells.
-    for r in range(matrix.shape[0]):
-        for c in range(matrix.shape[1]):
-            v = matrix.values[r, c]
-            if pd.isna(v):
+    for r in range(len(tasks)):
+        for c in range(len(tools)):
+            cat = cat_matrix.iat[r, c]
+            if not isinstance(cat, str) or cat not in CAT_GLYPHS:
                 continue
-            cat = cat_matrix.values[r, c]
-            ax.text(c, r, CAT_GLYPHS[cat],
-                    ha="center", va="center", fontsize=7,
+            ax.text(c + 0.5, r + 0.5, CAT_GLYPHS[cat],
+                    ha="center", va="center", fontsize=8,
                     color="black", fontweight="bold")
 
     # Categorical legend instead of a continuous colorbar.
