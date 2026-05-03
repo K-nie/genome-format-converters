@@ -76,7 +76,10 @@ from typing import Callable, Optional
 _TOOL_TO_DIR = {
     ("T1", "gfc"):              "gfc",
     ("T1", "convertf"):         "convertf",
-    ("T1", "bioconvert"):       "bioconvert",
+    # ("T1", "bioconvert") removed in Phase 4 BioConvert audit (2026-05-02):
+    # BioConvert 1.2.0 has no vcf2eigenstrat converter; T1 task script no
+    # longer produces a bioconvert_rep* directory. Restore alongside the T1
+    # script block if upstream adds the converter.
     ("T2", "gfc"):              "gfc",
     ("T2", "plink2"):           "plink2",
     ("T2", "plink1.9"):         "plink1",
