@@ -125,8 +125,8 @@ if command -v bioconvert >/dev/null 2>&1; then
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "bioconvert" --version "$bc_version" \
             --replicate "$rep" \
-            --cmd "bioconvert vcf2plink '$vcf_input' '$out_dir/$stem.bed' --force" \
-            --notes "BioConvert framework (Caro 2023); internally uses plink2" \
+            --cmd "bioconvert vcf2plink '$vcf_input' '$out_dir/$stem.bed' --force -e ' --allow-extra-chr'" \
+            --notes "BioConvert framework (Caro 2023); internally uses plink1.9 (--recode PED). -e prefixed with leading space because BioConvert concatenates --extra-arguments to --out without a separator (upstream bug); the space breaks the concat. --allow-extra-chr is a no-op on numeric-chrom data (chr22-scale) but required for the smoke fixture (ctg1 contig label)." \
             >> "$out"
     done
 else
