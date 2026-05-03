@@ -19,10 +19,17 @@ of the 12 competitor pairs benchmarked here, only 3 are clean wins
 (audit 2026-05-03). The honest framing is "wall-time ratio" and
 "which side is faster."
 
+Statistical annotation (Phase 3, 2026-05-03): bars where the paired
+Wilcoxon test on log10(wall_s) survives Benjamini-Hochberg FDR
+correction at q = 0.05 (across all task x competitor x metric
+tests) get a trailing asterisk. p_adj_bh values are pulled from
+``benchmarks/results/figures/stats_pairs.tsv``; if the stats file
+is absent the plot still renders without annotations and warns.
+
 Correctness annotation: tasks where any tool's output diverged
 structurally from the per-task reference (`correct == "0"`) get a
-trailing asterisk; the title points to the correctness matrix
-figure for the per-task footnote.
+trailing asterisk on the x-axis label; the title points to the
+correctness matrix figure for the per-task footnote.
 
 Failed competitor reps excluded; tasks with no competitor produce
 no bars.
@@ -42,6 +49,7 @@ from _style import (
 )
 
 RAW = Path(__file__).resolve().parent.parent / "results" / "raw" / "all.tsv"
+STATS = Path(__file__).resolve().parent.parent / "results" / "figures" / "stats_pairs.tsv"
 
 
 def main() -> int:
@@ -78,6 +86,21 @@ def main() -> int:
         print("[error] no competitor data after pivoting", file=sys.stderr)
         return 1
 
+    # Pull per-(task, competitor) BH-adjusted p-values for the wall_s
+    # metric; build a lookup keyed on (task, tool) -> bool significant.
+    sig_lookup: dict[tuple[str, str], bool] = {}
+    n_tests = 0
+    if STATS.exists():
+        stats_df = pd.read_csv(STATS, sep="\t")
+        wall_stats = stats_df[stats_df["metric"] == "wall_s"].copy()
+        n_tests = len(stats_df)
+        for _, row in wall_stats.iterrows():
+            sig_lookup[(row["task"], row["competitor"])] = bool(
+                pd.notna(row["p_adj_bh"]) and row["p_adj_bh"] < 0.05)
+    else:
+        print(f"[warn] {STATS} missing — no significance asterisks rendered.",
+              file=sys.stderr)
+
     set_bioinformatics_style()
 
     competitor_order = sorted(long["tool"].unique())
@@ -100,10 +123,37 @@ def main() -> int:
         new_xticklabels.append(f"{task}*" if task in diverged_tasks else task)
     ax.set_xticklabels(new_xticklabels)
 
+    # Annotate significant bars with an asterisk above the bar.
+    # seaborn lays out bars in hue_order; iterate the patches and map
+    # each to (task, tool) via container index.
+    if sig_lookup:
+        x_tasks = [t.get_text().rstrip("*") for t in ax.get_xticklabels()]
+        for h, hue in enumerate(competitor_order):
+            if h >= len(ax.containers):
+                continue
+            container = ax.containers[h]
+            for i, bar in enumerate(container):
+                if i >= len(x_tasks):
+                    continue
+                task = x_tasks[i]
+                if not sig_lookup.get((task, hue), False):
+                    continue
+                height = bar.get_height()
+                if not (height and height > 0):
+                    continue
+                ax.text(bar.get_x() + bar.get_width() / 2,
+                        height * 1.04, "*",
+                        ha="center", va="bottom",
+                        fontsize=10, color="black",
+                        clip_on=False)
+
     title = ("Wall-time ratio (competitor / gfc) per benchmark task; "
              "dashed line at 1.0 is parity")
+    if sig_lookup:
+        title += (f"\n* p_BH < 0.05 (paired Wilcoxon on log10 wall_s; "
+                  f"BH-FDR across {n_tests} tests)")
     if diverged_tasks:
-        title += (f"\n* = at least one tool's output flagged as "
+        title += (f"\n** = at least one tool's output flagged as "
                   f"structural-divergence (see correctness_matrix figure)")
     ax.set_title(title)
 
