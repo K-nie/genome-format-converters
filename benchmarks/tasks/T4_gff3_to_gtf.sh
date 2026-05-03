@@ -106,7 +106,7 @@ if command -v bioconvert >/dev/null 2>&1; then
             --replicate "$rep" \
             --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      bioconvert gff3:gtf \"\$f\" '$out_dir/'\$stem.gtf --force; \
+                      bioconvert gff32gtf \"\$f\" '$out_dir/'\$stem.gtf --force; \
                    done; true" \
             --notes "BioConvert framework wrapper (Caro 2023)" \
             >> "$out"
