@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # T3 — Paired FASTA + GFF3 → GenBank.
-# Competitors: EMBOSS seqret, handwritten Biopython, gff3toembl.
+# Phase 4 primary competitors: NCBI table2asn (Sayers 2023), EMBLmyGFF3
+# (Norling 2018), EMBOSS seqret (Rice 2000). The handwritten Biopython
+# baseline (t3_biopython.py) is retained as a labelled naive baseline
+# but no longer carries primary-comparator weight — see
+# docs/LITERATURE_COMPARATORS_2026-05-03.md.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -63,9 +67,87 @@ else
     echo "[skip] T3 EMBOSS seqret (seqret not on PATH)" >&2
 fi
 
-# ---------- handwritten biopython reference --------------------------------
-# benchmarks/refs/t3_biopython.py is the "what a careful bioinformatician
-# would write in an hour" baseline using SeqIO + bcbio-gff.
+# ---------- table2asn (NCBI; PRIMARY) --------------------------------------
+# table2asn is the official NCBI GenBank-submission tool, mandatory for
+# every GenBank deposit since 2024-06-01 (replacement for tbl2asn). The
+# closest thing to a primary citation is Sayers 2023 (NAR D141) and the
+# NCBI tool homepage. table2asn reads paired FASTA + GFF3 and emits
+# .sqn (binary ASN.1) and .gbf (GenBank flat-file). For our comparison
+# the .gbf is the apples-to-apples output. Flags: `-M n` selects the
+# normal-genome workflow; `-J` enables FASTA validation (harmless).
+if command -v table2asn >/dev/null 2>&1; then
+    t2a_version="$(table2asn -version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
+    : "${t2a_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/table2asn_rep${rep}"
+        mkdir -p "$out_dir"
+        # table2asn reads -i <fasta> and looks for a paired .gff next
+        # to it. Stage symlinks per-file in $out_dir so its outputs
+        # land beside its inputs. Trailing `; true` lets one bad
+        # input not void the whole rep.
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T3" --tool "table2asn" --version "$t2a_version" \
+            --replicate "$rep" \
+            --cmd "for fa in '$GFC_BENCH_INPUT_DIR'/*.fasta; do \
+                      stem=\$(basename \"\$fa\" .fasta); \
+                      gff='$GFC_BENCH_INPUT_DIR'/\$stem.gff3; \
+                      [[ -f \"\$gff\" ]] || continue; \
+                      ln -sf \"\$fa\" '$out_dir/'\$stem.fasta; \
+                      ln -sf \"\$gff\" '$out_dir/'\$stem.gff; \
+                      table2asn -i '$out_dir/'\$stem.fasta -f '$out_dir/'\$stem.gff -M n -J -outdir '$out_dir' 2>/dev/null || true; \
+                   done; true" \
+            --notes "NCBI table2asn -M n -J (Sayers 2023); $notes_default" \
+            >> "$out"
+    done
+else
+    echo "[skip] T3 table2asn (download from https://ftp.ncbi.nlm.nih.gov/asn1-converters/by_program/table2asn/)" >&2
+fi
+
+# ---------- EMBLmyGFF3 (NBIS; PRIMARY) -------------------------------------
+# EMBLmyGFF3 (Norling 2018, BMC Research Notes 11:584) is a peer-reviewed
+# converter validated by ENA. Outputs EMBL (not GenBank), but the
+# format-conversion problem is identical and the same code path
+# generates the feature tables that GenBank uses. Citable replacement
+# for the demoted handwritten py-ref.
+if command -v EMBLmyGFF3 >/dev/null 2>&1; then
+    embl_version="$(EMBLmyGFF3 --version 2>&1 | head -1 | awk '{print $NF}' | tr -d '|')"
+    : "${embl_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/emblmygff3_rep${rep}"
+        mkdir -p "$out_dir"
+        # EMBLmyGFF3 wants gff + fasta as separate args plus required
+        # ENA project metadata flags. Placeholder values for the
+        # metadata since we are timing the conversion, not staging a
+        # real submission.
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T3" --tool "EMBLmyGFF3" --version "$embl_version" \
+            --replicate "$rep" \
+            --cmd "for fa in '$GFC_BENCH_INPUT_DIR'/*.fasta; do \
+                      stem=\$(basename \"\$fa\" .fasta); \
+                      gff='$GFC_BENCH_INPUT_DIR'/\$stem.gff3; \
+                      [[ -f \"\$gff\" ]] || continue; \
+                      EMBLmyGFF3 \"\$gff\" \"\$fa\" \
+                          --topology linear --molecule_type 'genomic DNA' \
+                          --transl_table 1 --species 'Y1000+ slice' \
+                          --locus_tag GFCBENCH --project_id PRJ00000 \
+                          --output '$out_dir/'\$stem.embl 2>/dev/null || true; \
+                   done; true" \
+            --notes "EMBLmyGFF3 (Norling 2018); EMBL output, structurally equivalent to GenBank; $notes_default" \
+            >> "$out"
+    done
+else
+    echo "[skip] T3 EMBLmyGFF3 (pip install EMBLmyGFF3)" >&2
+fi
+
+# ---------- handwritten biopython baseline (DEMOTED) -----------------------
+# Per docs/LITERATURE_COMPARATORS_2026-05-03.md: t3_biopython.py is
+# uncitable (BCBio.GFF has no peer-reviewed publication, only the
+# chapmanb/bcbb GitHub repo). Phase 4 reframes it as a labelled
+# "naive in-script baseline" while table2asn becomes the primary
+# citable comparator above. The block is retained so reviewers can
+# see how a one-hour Biopython script compares to gfc and to the
+# published tools — that is itself instructive — but it no longer
+# carries primary-comparator weight.
 ref_script="$repo/benchmarks/refs/t3_biopython.py"
 if [[ -f "$ref_script" ]]; then
     py_version="$(python --version 2>&1 | cut -d' ' -f2)"
@@ -76,7 +158,7 @@ if [[ -f "$ref_script" ]]; then
             --task "T3" --tool "py-ref" --version "$py_version" \
             --replicate "$rep" \
             --cmd "python '$ref_script' --input-dir '$GFC_BENCH_INPUT_DIR' --output-dir '$out_dir'" \
-            --notes "handwritten Biopython baseline; $notes_default" \
+            --notes "naive Biopython baseline (unpublished; pedagogical); $notes_default" \
             >> "$out"
     done
 fi
