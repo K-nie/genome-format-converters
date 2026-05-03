@@ -122,27 +122,21 @@ else
     echo "[skip] T5 bedops convert2bed (convert2bed not on PATH; bioconda: bedops)" >&2
 fi
 
-# ---------- BioConvert (framework comparator) -----------------------------
-# BioConvert gff32bed for cross-task framework parity with T1, T2, T4.
-if command -v bioconvert >/dev/null 2>&1; then
-    bc_version="$(bioconvert --version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
-    : "${bc_version:=unknown}"
-    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
-        out_dir="$bench_dir/bioconvert_rep${rep}"
-        mkdir -p "$out_dir"
-        python "$repo/benchmarks/bench_one.py" \
-            --task "T5" --tool "bioconvert" --version "$bc_version" \
-            --replicate "$rep" \
-            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
-                      stem=\$(basename \"\$f\" .gff3); \
-                      bioconvert gff3:bed \"\$f\" '$out_dir/'\$stem.bed --force; \
-                   done; true" \
-            --notes "BioConvert framework (Caro 2023); internally uses bedops" \
-            >> "$out"
-    done
-else
-    echo "[skip] T5 bioconvert (bioconvert not on PATH; pip install bioconvert)" >&2
-fi
+# ---------- BioConvert (intentionally NOT benchmarked on T5) --------------
+# BioConvert 1.2.0 has no GFF3-to-BED converter. Verified against the
+# `bioconvert --help` subcommand list on 2026-05-02; available BED-targeted
+# paths are vcf2bed, bigbed2bed, and wig2bed. There is no gff32bed,
+# gff3:bed, or any equivalent converter. A prior version of this script
+# invoked `bioconvert gff3:bed`, which exited non-zero (unknown converter)
+# and produced no output - the failure was masked by the trailing `; true`
+# in the per-file loop. UCSC kent (gff3ToGenePred + genePredToBed), AGAT
+# (agat_convert_sp_gff2bed.pl), and bedops (convert2bed --input=gff)
+# remain the comparators for T5.
+#
+# If a future BioConvert release adds a GFF3-to-BED converter, restore
+# the block from git history (commit prior to the Phase 4 BioConvert
+# audit) and re-add the ("T5", "bioconvert") entry to _TOOL_TO_DIR in
+# benchmarks/check_correctness.py.
 
 echo "[done] T5 rows written to $out" >&2
 python "$repo/benchmarks/check_correctness.py" --task T5 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T5 correctness check failed (non-fatal)" >&2

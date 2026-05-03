@@ -98,7 +98,10 @@ _TOOL_TO_DIR = {
     ("T5", "ucsc-chain"):       "ucsc",
     ("T5", "AGAT"):             "agat",
     ("T5", "bedops"):           "bedops",
-    ("T5", "bioconvert"):       "bioconvert",
+    # ("T5", "bioconvert") removed in Phase 4 BioConvert audit (2026-05-02):
+    # BioConvert 1.2.0 has no GFF3-to-BED converter; T5 task script no
+    # longer produces a bioconvert_rep* directory. Restore alongside the T5
+    # script block if upstream adds the converter.
     ("T6", "gfc"):              "gfc",
     ("T6", "pyhmmer"):          "pyhmmer",
     ("T6", "biopython"):        "biopython",
