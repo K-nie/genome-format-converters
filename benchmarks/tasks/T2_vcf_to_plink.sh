@@ -70,6 +70,34 @@ else
     echo "[skip] T2 plink1.9 (plink v1 not on PATH)" >&2
 fi
 
+# ---------- BioConvert (framework comparator) -----------------------------
+# BioConvert (Caro 2023, NAR Genomics & Bioinformatics) is the only
+# multi-format converter framework with a primary publication in the
+# right venue. Its vcf2plink path internally dispatches to plink2;
+# the wall-time delta vs. the explicit plink2 row times the framework
+# overhead. Cross-task: also added in T1, T4, T5 so reviewers see
+# gfc head-to-head against the closest existing project of comparable
+# scope.
+if command -v bioconvert >/dev/null 2>&1; then
+    bc_version="$(bioconvert --version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
+    : "${bc_version:=unknown}"
+    vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
+    stem="$(basename "$vcf_input")"
+    stem="${stem%.vcf.gz}"; stem="${stem%.vcf}"; stem="${stem%.bcf}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bioconvert_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T2" --tool "bioconvert" --version "$bc_version" \
+            --replicate "$rep" \
+            --cmd "bioconvert vcf2plink '$vcf_input' '$out_dir/$stem.bed' --force" \
+            --notes "BioConvert framework (Caro 2023); internally uses plink2" \
+            >> "$out"
+    done
+else
+    echo "[skip] T2 bioconvert (bioconvert not on PATH)" >&2
+fi
+
 # TODO (correctness check, manual): byte-diff between gfc .bed and plink2 .bed.
 # Both are SNP-major 2-bit packed; diffs typically come from allele-ordering
 # conventions (a1/a2 swap) — plink2 sometimes emits major as a1 and minor as

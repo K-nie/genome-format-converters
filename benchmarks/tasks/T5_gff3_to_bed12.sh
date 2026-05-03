@@ -92,5 +92,27 @@ else
     echo "[skip] T5 AGAT (agat_convert_sp_gff2bed.pl not on PATH)" >&2
 fi
 
+# ---------- BioConvert (framework comparator) -----------------------------
+# BioConvert gff32bed for cross-task framework parity with T1, T2, T4.
+if command -v bioconvert >/dev/null 2>&1; then
+    bc_version="$(bioconvert --version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
+    : "${bc_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bioconvert_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T5" --tool "bioconvert" --version "$bc_version" \
+            --replicate "$rep" \
+            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+                      stem=\$(basename \"\$f\" .gff3); \
+                      bioconvert gff3:bed \"\$f\" '$out_dir/'\$stem.bed --force; \
+                   done; true" \
+            --notes "BioConvert framework (Caro 2023); internally uses bedops" \
+            >> "$out"
+    done
+else
+    echo "[skip] T5 bioconvert (bioconvert not on PATH; pip install bioconvert)" >&2
+fi
+
 echo "[done] T5 rows written to $out" >&2
 python "$repo/benchmarks/check_correctness.py" --task T5 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T5 correctness check failed (non-fatal)" >&2

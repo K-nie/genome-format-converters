@@ -117,6 +117,37 @@ fi
 # EIGENSTRAT spec — the comparison was therefore meaningless. convertf is
 # the correct reference.
 
+# ---------- BioConvert (secondary, framework comparator) -------------------
+# BioConvert (Caro 2023, NAR Genomics & Bioinformatics) provides a
+# vcf2eigenstrat conversion path. Internally it uses plink+convertf
+# under the hood, so the wall-time delta vs. our explicit plink2 +
+# convertf chain measures the framework overhead. Reviewers may
+# explicitly ask "why didn't you compare to BioConvert?" — this row
+# answers it. Skipped automatically when bioconvert isn't installed.
+if command -v bioconvert >/dev/null 2>&1; then
+    bc_version="$(bioconvert --version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
+    : "${bc_version:=unknown}"
+    vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
+    stem="$(basename "$vcf_input")"
+    stem="${stem%.vcf.gz}"; stem="${stem%.vcf}"; stem="${stem%.bcf}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bioconvert_rep${rep}"
+        mkdir -p "$out_dir"
+        # bioconvert vcf2eigenstrat lands a .geno/.snp/.ind triplet at
+        # the output stem. Force-overwrite so reps don't trip on each
+        # other's output if /tmp wasn't fully cleared.
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T1" --tool "bioconvert" --version "$bc_version" \
+            --replicate "$rep" \
+            --cmd "bioconvert vcf2eigenstrat '$vcf_input' '$out_dir/$stem.geno' --force" \
+            --notes "BioConvert framework (Caro 2023); internally uses plink+convertf" \
+            >> "$out"
+        echo "[T1 trace] after bioconvert rep $rep: $(wc -l < "$out") lines" >&2
+    done
+else
+    echo "[skip] T1 bioconvert (bioconvert not on PATH; pip install bioconvert)" >&2
+fi
+
 echo "[done] T1 rows written to $out ($(wc -l < "$out") lines incl. header)" >&2
 python "$repo/benchmarks/check_correctness.py" --task T1 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T1 correctness check failed (non-fatal)" >&2
 echo "[T1 trace] after check_correctness: $(wc -l < "$out") lines" >&2

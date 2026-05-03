@@ -83,5 +83,37 @@ else
     echo "[skip] T4 AGAT (agat_convert_sp_gff2gtf.pl not on PATH)" >&2
 fi
 
+# ---------- BioConvert -----------------------------------------------------
+# BioConvert (Caro 2023, NAR Genomics & Bioinformatics) is the only
+# multi-format converter framework with a primary publication in the
+# right venue. It is a "wrapper of wrappers" — for gff3 -> gtf it shells
+# out to gffread under the hood, but the framework overhead and CLI
+# uniformity are what we are timing here. Including BioConvert across
+# T1, T2, T4, T5 lets reviewers see gfc head-to-head against the
+# closest existing project of comparable scope.
+if command -v bioconvert >/dev/null 2>&1; then
+    bc_version="$(bioconvert --version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
+    : "${bc_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bioconvert_rep${rep}"
+        mkdir -p "$out_dir"
+        # bioconvert uses input/output extensions to pick the converter;
+        # gff3 -> gtf is the canonical one-line invocation. Per-file loop
+        # mirrors the gffread/AGAT blocks above. Trailing `; true` keeps
+        # one bad input from voiding the whole rep.
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T4" --tool "bioconvert" --version "$bc_version" \
+            --replicate "$rep" \
+            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+                      stem=\$(basename \"\$f\" .gff3); \
+                      bioconvert gff3:gtf \"\$f\" '$out_dir/'\$stem.gtf --force; \
+                   done; true" \
+            --notes "BioConvert framework wrapper (Caro 2023)" \
+            >> "$out"
+    done
+else
+    echo "[skip] T4 bioconvert (bioconvert not on PATH; pip install bioconvert)" >&2
+fi
+
 echo "[done] T4 rows written to $out" >&2
 python "$repo/benchmarks/check_correctness.py" --task T4 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T4 correctness check failed (non-fatal)" >&2
