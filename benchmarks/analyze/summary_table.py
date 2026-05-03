@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Author: Benjamin Narh-Madey
 """Headline-metrics summary table — gfc vs. best competitor per task.
 
 Reads ``benchmarks/results/raw/all.tsv`` (the merged output of
@@ -9,12 +10,17 @@ Reads ``benchmarks/results/raw/all.tsv`` (the merged output of
 For every task it reports:
   - gfc wall_s (mean ± sd, n)
   - best competitor wall_s (the competitor with the lowest mean wall_s)
-  - speedup multiplier (best_competitor_mean / gfc_mean) — >1 means gfc
-    is faster, <1 means the competitor is faster
+  - speedup multiplier — median of the paired (competitor / gfc)
+    ratios, with a 10000-resample bootstrap 95 % CI. >1 means gfc
+    is faster, <1 means the competitor is faster (Phase 3 audit
+    2026-05-03 switched both ratio columns from mean-of-ratios to
+    median-with-CI for honest uncertainty reporting)
   - gfc peak_rss_mb (mean ± sd)
   - lowest-RAM competitor peak_rss_mb
-  - memory ratio (lowest_competitor_rss_mean / gfc_rss_mean) — >1 means
-    gfc is more memory-efficient
+  - memory ratio — median of paired (competitor / gfc) RSS ratios
+    with bootstrap 95 % CI; same convention
+  - Cliff's delta on the paired raw values (competitor vs gfc) for
+    each ratio column, as the non-parametric effect-size complement
   - correctness flag from the gfc rep1 row (`1` / `0` / `skip` / blank)
 
 Tasks with no competitor (only gfc rows) emit a row with `—` placeholders
@@ -30,10 +36,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 _RAW = Path(__file__).resolve().parent.parent / "results" / "raw" / "all.tsv"
 _FIG = Path(__file__).resolve().parent.parent / "results" / "figures"
+
+_BOOT_N = 10_000
+_RNG = np.random.default_rng(20260503)
 
 
 def _agg_tool(df: pd.DataFrame, metric: str) -> pd.DataFrame:
@@ -45,8 +55,68 @@ def _agg_tool(df: pd.DataFrame, metric: str) -> pd.DataFrame:
                                    "count": f"{metric}_n"})
 
 
+def _paired_values(df_ok: pd.DataFrame, task: str, tool: str,
+                   metric: str) -> np.ndarray | None:
+    """Return the per-replicate values for (task, tool, metric) on
+    successful reps, indexed by replicate number. None if missing."""
+    sub = df_ok[(df_ok["task"] == task) & (df_ok["tool"] == tool)]
+    if sub.empty:
+        return None
+    return sub.set_index("replicate")[metric]
+
+
+def _median_ratio_ci(comp: pd.Series, gfc: pd.Series,
+                     n_boot: int = _BOOT_N) -> tuple[float, float, float, int]:
+    """Median of paired comp/gfc ratios with bootstrap 95 % CI.
+
+    Pairs by replicate index intersection so missing reps don't get
+    an unpaired ratio. Returns (median, ci_lo, ci_hi, n_pairs)."""
+    paired = sorted(set(comp.index) & set(gfc.index))
+    if len(paired) < 2:
+        return float("nan"), float("nan"), float("nan"), len(paired)
+    c = comp.loc[paired].to_numpy(dtype=float)
+    g = gfc.loc[paired].to_numpy(dtype=float)
+    ratios = c / g
+    point = float(np.median(ratios))
+    n = len(ratios)
+    boot = np.empty(n_boot)
+    for i in range(n_boot):
+        idx = _RNG.integers(0, n, size=n)
+        boot[i] = np.median(ratios[idx])
+    lo, hi = np.percentile(boot, [2.5, 97.5])
+    return point, float(lo), float(hi), n
+
+
+def _cliffs_delta(comp: pd.Series, gfc: pd.Series) -> float:
+    """Cliff's delta on the paired comp - gfc differences."""
+    paired = sorted(set(comp.index) & set(gfc.index))
+    if not paired:
+        return float("nan")
+    diff = (comp.loc[paired].to_numpy(dtype=float)
+            - gfc.loc[paired].to_numpy(dtype=float))
+    n = len(diff)
+    pos = int((diff > 0).sum())
+    neg = int((diff < 0).sum())
+    return (pos - neg) / n
+
+
+def _fmt_ratio_ci(point: float, lo: float, hi: float) -> str:
+    if not np.isfinite(point):
+        return "—"
+    if not (np.isfinite(lo) and np.isfinite(hi)):
+        return f"{point:.2f}x"
+    return f"{point:.2f}x [95% CI {lo:.2f}-{hi:.2f}]"
+
+
+def _fmt_delta(d: float) -> str:
+    if not np.isfinite(d):
+        return "—"
+    return f"{d:+.2f}"
+
+
 def build_summary(df: pd.DataFrame) -> pd.DataFrame:
     """One row per task. gfc baseline + best competitor by wall + by RAM."""
+    df_ok = df[df["exit_code"] == 0].copy()
     wall = _agg_tool(df, "wall_s")
     rss = _agg_tool(df, "peak_rss_mb")
 
@@ -58,14 +128,6 @@ def build_summary(df: pd.DataFrame) -> pd.DataFrame:
     correctness = (df[(df["tool"] == "gfc") & (df["replicate"] == 1)]
                    .set_index("task")["correct"].astype(str))
 
-    # Tasks present in successful rows (after the exit_code filter inside
-    # `_agg_tool`). If the raw TSV had a task whose every row was failed
-    # OR malformed (e.g. the legacy convertf row with embedded newline
-    # that pandas split into multi-row garbage), it'll be missing from
-    # the aggregate index and pivoting on the raw `df["task"].unique()`
-    # would KeyError on `wall.loc[task]`. Iterate the aggregated index
-    # instead — emit a per-task "no data" row for tasks that are in
-    # df but not in wall.
     tasks_with_data = sorted({t for (t, _) in wall.index})
     tasks_in_raw = sorted(df["task"].unique())
 
@@ -78,10 +140,12 @@ def build_summary(df: pd.DataFrame) -> pd.DataFrame:
                 "best_speed_tool": "—",
                 "best_speed_wall_s": "—",
                 "speedup_x": "—",
+                "speedup_cliffs_delta": "—",
                 "gfc_rss_mb": "—",
                 "best_mem_tool": "—",
                 "best_mem_rss_mb": "—",
                 "mem_ratio_x": "—",
+                "mem_cliffs_delta": "—",
                 "correct": "",
                 "failed_tools": "(no successful reps)",
             })
@@ -90,40 +154,54 @@ def build_summary(df: pd.DataFrame) -> pd.DataFrame:
         gfc_wall = wall.loc[(task, "gfc")] if (task, "gfc") in wall.index else None
         gfc_rss = rss.loc[(task, "gfc")] if (task, "gfc") in rss.index else None
 
-        # Competitor candidates = every successful tool other than gfc.
-        # `wall.loc[task]` raises KeyError if `task` isn't in the
-        # aggregate's level-0; we already guarded above so this is safe.
         comp_wall = wall.loc[task].drop("gfc", errors="ignore")
         comp_rss = rss.loc[task].drop("gfc", errors="ignore")
 
+        # Pick the fastest competitor by mean (preserves prior behaviour),
+        # then bootstrap the median ratio of THAT competitor against gfc.
         if comp_wall.empty:
-            best_speed_tool = best_speed_mean = best_speed_sd = speedup = None
+            best_speed_tool = "—"
+            best_speed_mean = best_speed_sd = float("nan")
+            speedup_str = "—"
+            speedup_delta_str = "—"
         else:
             best_speed_tool = comp_wall["wall_s_mean"].idxmin()
             best_speed_mean = comp_wall.loc[best_speed_tool, "wall_s_mean"]
             best_speed_sd = comp_wall.loc[best_speed_tool, "wall_s_sd"]
-            speedup = (best_speed_mean / gfc_wall["wall_s_mean"]
-                       if gfc_wall is not None else None)
+            gfc_wall_vals = _paired_values(df_ok, task, "gfc", "wall_s")
+            comp_wall_vals = _paired_values(df_ok, task, best_speed_tool, "wall_s")
+            point, lo, hi, _ = _median_ratio_ci(comp_wall_vals, gfc_wall_vals)
+            speedup_str = _fmt_ratio_ci(point, lo, hi)
+            speedup_delta_str = _fmt_delta(_cliffs_delta(comp_wall_vals,
+                                                          gfc_wall_vals))
 
         if comp_rss.empty:
-            best_mem_tool = best_mem_mean = best_mem_sd = mem_ratio = None
+            best_mem_tool = "—"
+            best_mem_mean = best_mem_sd = float("nan")
+            mem_ratio_str = "—"
+            mem_delta_str = "—"
         else:
             best_mem_tool = comp_rss["peak_rss_mb_mean"].idxmin()
             best_mem_mean = comp_rss.loc[best_mem_tool, "peak_rss_mb_mean"]
             best_mem_sd = comp_rss.loc[best_mem_tool, "peak_rss_mb_sd"]
-            mem_ratio = (best_mem_mean / gfc_rss["peak_rss_mb_mean"]
-                         if gfc_rss is not None else None)
+            gfc_rss_vals = _paired_values(df_ok, task, "gfc", "peak_rss_mb")
+            comp_rss_vals = _paired_values(df_ok, task, best_mem_tool, "peak_rss_mb")
+            point, lo, hi, _ = _median_ratio_ci(comp_rss_vals, gfc_rss_vals)
+            mem_ratio_str = _fmt_ratio_ci(point, lo, hi)
+            mem_delta_str = _fmt_delta(_cliffs_delta(comp_rss_vals, gfc_rss_vals))
 
         rows.append({
             "task": task,
             "gfc_wall_s": _fmt_mean_sd(gfc_wall, "wall_s"),
-            "best_speed_tool": best_speed_tool or "—",
+            "best_speed_tool": best_speed_tool,
             "best_speed_wall_s": _fmt_value_sd(best_speed_mean, best_speed_sd),
-            "speedup_x": f"{speedup:.2f}x" if speedup else "—",
+            "speedup_x": speedup_str,
+            "speedup_cliffs_delta": speedup_delta_str,
             "gfc_rss_mb": _fmt_mean_sd(gfc_rss, "peak_rss_mb"),
-            "best_mem_tool": best_mem_tool or "—",
+            "best_mem_tool": best_mem_tool,
             "best_mem_rss_mb": _fmt_value_sd(best_mem_mean, best_mem_sd),
-            "mem_ratio_x": f"{mem_ratio:.2f}x" if mem_ratio else "—",
+            "mem_ratio_x": mem_ratio_str,
+            "mem_cliffs_delta": mem_delta_str,
             "correct": correctness.get(task, ""),
             "failed_tools": failed.get(task, ""),
         })
@@ -151,12 +229,16 @@ def _fmt_value_sd(mean, sd) -> str:
 def render_markdown(table: pd.DataFrame) -> str:
     """Pipe-delimited markdown the README and the paper can paste verbatim."""
     cols = ["task", "gfc_wall_s", "best_speed_tool", "best_speed_wall_s",
-            "speedup_x", "gfc_rss_mb", "best_mem_tool", "best_mem_rss_mb",
-            "mem_ratio_x", "correct", "failed_tools"]
+            "speedup_x", "speedup_cliffs_delta",
+            "gfc_rss_mb", "best_mem_tool", "best_mem_rss_mb",
+            "mem_ratio_x", "mem_cliffs_delta",
+            "correct", "failed_tools"]
     headers = ["Task", "gfc wall (s)", "Fastest competitor",
-               "Competitor wall (s)", "Speedup", "gfc RSS (MB)",
+               "Competitor wall (s)", "Speedup (median, 95% CI)",
+               "Speedup Cliff's delta", "gfc RSS (MB)",
                "Lowest-RAM competitor", "Competitor RSS (MB)",
-               "Memory ratio", "Correct", "Failed tools"]
+               "Memory ratio (median, 95% CI)", "Memory Cliff's delta",
+               "Correct", "Failed tools"]
     lines = ["| " + " | ".join(headers) + " |",
              "|" + "|".join("---" for _ in headers) + "|"]
     for _, row in table.iterrows():
@@ -170,6 +252,7 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
     'gfc loses to plink2 by 14x but beats AGAT by 13x on the same task'
     structure that the headline summary collapses.
     """
+    df_ok = df[df["exit_code"] == 0].copy()
     wall = _agg_tool(df, "wall_s")
     rss = _agg_tool(df, "peak_rss_mb")
     rows = []
@@ -178,14 +261,20 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
             continue
         gfc_wall_mean = wall.loc[(task, "gfc"), "wall_s_mean"]
         gfc_rss_mean = rss.loc[(task, "gfc"), "peak_rss_mb_mean"]
+        gfc_wall_vals = _paired_values(df_ok, task, "gfc", "wall_s")
+        gfc_rss_vals = _paired_values(df_ok, task, "gfc", "peak_rss_mb")
         for comp_tool in sorted({tool for (t, tool) in wall.index
                                  if t == task and tool != "gfc"}):
-            cw = wall.loc[(task, comp_tool), "wall_s_mean"]
-            cr = rss.loc[(task, comp_tool), "peak_rss_mb_mean"]
-            speedup = cw / gfc_wall_mean if gfc_wall_mean else None
-            mem_ratio = cr / gfc_rss_mean if gfc_rss_mean else None
-            wins_speed = speedup is not None and speedup > 1.0
-            wins_mem = mem_ratio is not None and mem_ratio > 1.0
+            cw_mean = wall.loc[(task, comp_tool), "wall_s_mean"]
+            cr_mean = rss.loc[(task, comp_tool), "peak_rss_mb_mean"]
+            cw_vals = _paired_values(df_ok, task, comp_tool, "wall_s")
+            cr_vals = _paired_values(df_ok, task, comp_tool, "peak_rss_mb")
+            sp_pt, sp_lo, sp_hi, _ = _median_ratio_ci(cw_vals, gfc_wall_vals)
+            mr_pt, mr_lo, mr_hi, _ = _median_ratio_ci(cr_vals, gfc_rss_vals)
+            sp_delta = _cliffs_delta(cw_vals, gfc_wall_vals)
+            mr_delta = _cliffs_delta(cr_vals, gfc_rss_vals)
+            wins_speed = np.isfinite(sp_pt) and sp_pt > 1.0
+            wins_mem = np.isfinite(mr_pt) and mr_pt > 1.0
             verdict = ("gfc wins" if wins_speed and wins_mem
                        else "speed only" if wins_speed
                        else "memory only" if wins_mem
@@ -194,11 +283,13 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
                 "task": task,
                 "competitor": comp_tool,
                 "gfc_wall_s": f"{gfc_wall_mean:.2f}",
-                "comp_wall_s": f"{cw:.2f}",
-                "speedup_x": f"{speedup:.2f}x" if speedup else "—",
+                "comp_wall_s": f"{cw_mean:.2f}",
+                "speedup_x": _fmt_ratio_ci(sp_pt, sp_lo, sp_hi),
+                "speedup_cliffs_delta": _fmt_delta(sp_delta),
                 "gfc_rss_mb": f"{gfc_rss_mean:.2f}",
-                "comp_rss_mb": f"{cr:.2f}",
-                "mem_ratio_x": f"{mem_ratio:.2f}x" if mem_ratio else "—",
+                "comp_rss_mb": f"{cr_mean:.2f}",
+                "mem_ratio_x": _fmt_ratio_ci(mr_pt, mr_lo, mr_hi),
+                "mem_cliffs_delta": _fmt_delta(mr_delta),
                 "verdict": verdict,
             })
     return pd.DataFrame(rows)
@@ -209,12 +300,14 @@ def render_per_pair_markdown(table: pd.DataFrame) -> str:
     pairwise comparison so the paper can read 'gfc beats AGAT 13x on
     T4' off the table without doing arithmetic."""
     cols = ["task", "competitor", "gfc_wall_s", "comp_wall_s",
-            "speedup_x", "gfc_rss_mb", "comp_rss_mb", "mem_ratio_x",
-            "verdict"]
+            "speedup_x", "speedup_cliffs_delta",
+            "gfc_rss_mb", "comp_rss_mb", "mem_ratio_x",
+            "mem_cliffs_delta", "verdict"]
     headers = ["Task", "Competitor", "gfc wall (s)", "Comp wall (s)",
-               "Speedup (>1 = gfc faster)", "gfc RSS (MB)",
-               "Comp RSS (MB)", "Mem ratio (>1 = gfc smaller)",
-               "Verdict"]
+               "Speedup (median, 95% CI; >1 = gfc faster)",
+               "Speedup Cliff's delta", "gfc RSS (MB)",
+               "Comp RSS (MB)", "Mem ratio (median, 95% CI; >1 = gfc smaller)",
+               "Memory Cliff's delta", "Verdict"]
     lines = ["| " + " | ".join(headers) + " |",
              "|" + "|".join("---" for _ in headers) + "|"]
     for _, row in table.iterrows():
