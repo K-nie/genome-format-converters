@@ -1,0 +1,9 @@
+Per-task spider grid (supplementary). Each polar panel compares gfc against the primary literature competitor for that task, on four panel-friendly axes: wall-time efficiency (inverted, min-max normalised within the panel), memory efficiency (inverted, min-max normalised within the panel), correctness (structural-equivalence pass = 1.0, documented divergence = 0.5, unchecked / fail = 0.0), and install lightness (heavy 0.3 / medium 0.6 / light 1.0 dependency bucket). Polygons inherit the figure-suite tool colours so gfc's polygon is the same colour across every panel and every figure. The shape of each panel argues per task: a tall narrow polygon (wall + memory dominant) is the speed / footprint argument; a balanced polygon is the workflow-fit argument. Per-task status:
+  T1 (convertf): panel populated
+  T2 (plink2): panel populated
+  T3 (EMBOSS-seqret): panel populated
+  T4 (gffread): panel populated
+  T5 (AGAT): panel populated
+  T6 (pyhmmer): panel populated
+  T7 (py-ref): panel populated
+  T8 (bcftools-pyref): panel populated
