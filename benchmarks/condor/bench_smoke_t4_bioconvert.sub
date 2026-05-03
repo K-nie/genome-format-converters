@@ -1,0 +1,49 @@
+# Author: Benjamin Narh-Madey
+# HTCondor submit file: Phase 4 smoke run — BioConvert on T4 only.
+#
+# Purpose: validate that the Phase 4 BioConvert wrapper for T4
+# (gff3 -> gtf) actually invokes correctly on a cluster execute host
+# before launching the full multi-comparator production run. Uses
+# n=2 replicates (smoke tier per the bench-harness conventions) and
+# runs only T4_gff3_to_gtf.sh.
+#
+# Prerequisite: bioconvert must be installed in the gfc-bench conda env
+# on the execute host (`pip install bioconvert` on the submit host
+# while gfc-bench is active; conda env is shared via NFS).
+#
+# Submit with:
+#     cd <repo>/benchmarks/condor && condor_submit bench_smoke_t4_bioconvert.sub
+#
+# After completion check:
+#     tail -30 logs/bench_smoke_t4_bioconvert.<ClusterId>.err
+#     column -t -s $'\t' ../results/raw/T4_gff3_to_gtf.tsv | tail -20
+#
+# Promote to full production by switching back to bench.sub once this
+# smoke validates on the cluster.
+
+universe        = vanilla
+executable      = run_smoke_t4_bioconvert.sh
+
+# Propagate submitter env so conda + HOME + PATH resolve under
+# run_on_condor.sh's `source conda.sh` activation.
+getenv          = True
+
+should_transfer_files = NO
+initialdir      = $ENV(PWD)
+
+# T4 on Y1000+ slice is the smallest-fastest task; 2 cores + 4 GB is
+# ample. Tune up for production via bench.sub, not here.
+request_cpus    = 2
+request_memory  = 4 GB
+request_disk    = 10 GB
+
+log             = logs/bench_smoke_t4_bioconvert.$(ClusterId).log
+output          = logs/bench_smoke_t4_bioconvert.$(ClusterId).out
+error           = logs/bench_smoke_t4_bioconvert.$(ClusterId).err
+
+# Smoke job — short. Keep the JobDuration off the Long tier so the
+# scheduler treats it like a quick validation.
++JobDurationCategory = "Medium"
+
+# Smoke = n=2 replicates per (tool, task). See run_smoke_t4_bioconvert.sh.
+queue 1
