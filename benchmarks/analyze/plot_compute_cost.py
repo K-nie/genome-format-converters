@@ -1,29 +1,52 @@
 #!/usr/bin/env python3
+# Author: Benjamin Narh-Madey
 """Supplementary figure — cumulative compute time per tool, stacked by task.
 
 For each tool, the bar height is the sum of mean wall_s across every
 task that tool ran. gfc's bar covers all 8 segments (one per task);
-single-purpose competitors cover only 1-2. Visualises the
-"one tool, no overhead, handles every task" story.
+single-purpose competitors cover only 1-2 segments.
 
-Paper utility: supplementary "S3 — total cost of running the bench" or
-"workflow comparison" — the implicit argument is that even where a
-single competitor wins on one task, the user pays the cost of
-installing, configuring, and learning N tools to cover what gfc does
-alone.
+The framing in the title is explicit about the methodology: each tool's
+bar is the sum of wall time across the tasks it can perform, not a
+like-for-like single-task comparison. Reading the figure as "gfc is
+slower than plink2" misses the point — plink2's bar covers only T2;
+gfc's bar covers T1..T8. The implicit user-cost argument is "to cover
+what gfc does in one CLI you would install N tools whose summed
+runtime is the sum of their bars."
 
-Failed reps excluded; tasks where a tool didn't participate contribute
-zero to that tool's stack.
+Failed reps excluded; tasks where a tool did not participate
+contribute zero to that tool's stack. Task-segment colours come from
+a 8-element pull from the shared Okabe-Ito palette so they match
+the per-task colours used elsewhere in the figure suite.
 """
 from pathlib import Path
 import sys
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+
+from _style import (
+    PALETTE,
+    double_col_size,
+    save_figure,
+    set_bioinformatics_style,
+)
 
 RAW = Path(__file__).resolve().parent.parent / "results" / "raw" / "all.tsv"
-FIG = Path(__file__).resolve().parent.parent / "results" / "figures"
+
+# Stable T1..T8 -> Okabe-Ito colour. Same task = same colour wherever
+# tasks are colour-coded (only this figure today, but pinned for
+# forward consistency).
+TASK_COLORS = {
+    "T1": PALETTE["orange"],
+    "T2": PALETTE["sky_blue"],
+    "T3": PALETTE["bluish_green"],
+    "T4": PALETTE["yellow"],
+    "T5": PALETTE["blue"],
+    "T6": PALETTE["vermillion"],
+    "T7": PALETTE["reddish_purple"],
+    "T8": "#999999",   # 8th slot beyond Okabe-Ito's 7-non-black colours.
+}
 
 
 def main() -> int:
@@ -36,53 +59,39 @@ def main() -> int:
         print("[error] no successful reps in all.tsv", file=sys.stderr)
         return 1
 
-    # Mean wall per (task, tool); pivot so tasks are stacked on top of
-    # each tool's column.
     means = df.groupby(["task", "tool"], as_index=False)["wall_s"].mean()
     wide = means.pivot(index="tool", columns="task", values="wall_s").fillna(0.0)
-
-    # Sort tools by total cumulative wall so the figure reads
-    # "biggest stack on the right."
     wide = wide.assign(_total=wide.sum(axis=1)).sort_values("_total")
     totals = wide.pop("_total")
 
-    FIG.mkdir(parents=True, exist_ok=True)
-    sns.set_theme(style="whitegrid", context="paper")
-    palette = sns.color_palette("tab10", n_colors=len(wide.columns))
+    set_bioinformatics_style()
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    # Use integer x-positions explicitly so the per-bar text annotation
-    # below has a numeric x to anchor against. seaborn / matplotlib's
-    # categorical bar handling is fine for the bars themselves but
-    # `ax.text(tool, total, ...)` with a string x crashes inside
-    # `convert_xunits` on recent matplotlib.
+    fig, ax = plt.subplots(figsize=double_col_size(height_in=4.5))
     x_positions = list(range(len(wide.index)))
     bottom = pd.Series(0.0, index=wide.index)
-    for i, task in enumerate(wide.columns):
+    for task in wide.columns:
         heights = wide[task]
         ax.bar(x_positions, heights.values, bottom=bottom.values,
-               label=task, color=palette[i], edgecolor="white",
-               linewidth=0.4)
+               label=task, color=TASK_COLORS.get(task, "#444444"),
+               edgecolor="white", linewidth=0.4)
         bottom = bottom + heights
     ax.set_xticks(x_positions)
-    ax.set_xticklabels(wide.index)
+    ax.set_xticklabels(wide.index, rotation=45, ha="right")
 
-    # Annotate each bar's total at the top.
     for x, (tool, total) in zip(x_positions, totals.items()):
         ax.text(x, float(total), f"{float(total):.0f}s",
-                ha="center", va="bottom", fontsize=8, alpha=0.8)
+                ha="center", va="bottom", fontsize=6, alpha=0.85)
 
     ax.set_ylabel("cumulative wall time across tasks (s)")
     ax.set_xlabel("tool")
-    ax.set_title("Total compute cost per tool, stacked by task — "
-                 "gfc's stack covers every task; single-purpose tools cover one")
-    ax.legend(title="task", loc="best", frameon=False, fontsize=8,
-              ncol=2)
-    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    ax.set_title("Total compute cost per tool, stacked by task — each tool's bar "
+                 "is the sum of wall time across the tasks it can perform; "
+                 "gfc covers all 8")
+    ax.legend(title="task", loc="upper left",
+              bbox_to_anchor=(1.02, 1.0), frameon=False, ncol=1)
     fig.tight_layout()
-    for ext in ("png", "pdf"):
-        fig.savefig(FIG / f"compute_cost.{ext}", dpi=300, bbox_inches="tight")
-    print(f"[done] wrote {FIG / 'compute_cost.png'} + .pdf", file=sys.stderr)
+    save_figure(fig, "compute_cost")
+    print(f"[done] wrote compute_cost.png + .pdf", file=sys.stderr)
     return 0
 
 
