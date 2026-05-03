@@ -57,6 +57,37 @@ else
     echo "[skip] T6 pyhmmer (pyhmmer not importable)" >&2
 fi
 
+# ---------- Biopython SearchIO.HmmerIO (secondary) -------------------------
+# Biopython (Cock 2009, Bioinformatics 25:1422) is the most-cited Python
+# parser for HMMER outputs. It is what reviewers will expect to see if
+# pyhmmer's "20x faster than Biopython" claim (Larralde 2023) is the
+# selling point gfc inherits. The wrapper script
+# benchmarks/refs/t6_biopython_searchio.py does the parsing-and-write
+# loop using Bio.SearchIO.parse(..., 'hmmer3-tab') and writes a TSV
+# with the same columns gfc emits.
+if python -c "from Bio import SearchIO" 2>/dev/null; then
+    biopy_version="$(python -c 'import Bio; print(Bio.__version__)' 2>/dev/null || echo unknown)"
+    ref_script="$repo/benchmarks/refs/t6_biopython_searchio.py"
+    if [[ -f "$ref_script" ]]; then
+        for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+            out_dir="$bench_dir/biopython_rep${rep}"
+            mkdir -p "$out_dir"
+            python "$repo/benchmarks/bench_one.py" \
+                --task "T6" --tool "biopython" --version "$biopy_version" \
+                --replicate "$rep" \
+                --cmd "python '$ref_script' \
+                       --tblout '$input_dir/sample.tblout' \
+                       --output '$out_dir/sample.tsv'" \
+                --notes "Bio.SearchIO.HmmerIO (Cock 2009)" \
+                >> "$out"
+        done
+    else
+        echo "[skip] T6 biopython (refs/t6_biopython_searchio.py missing)" >&2
+    fi
+else
+    echo "[skip] T6 biopython SearchIO (Biopython not importable)" >&2
+fi
+
 # Removed in Stage 1 (bench/stage1-fairness): the awk one-liner baseline
 # previously here. Its own --notes column already declared the output
 # "NOT equivalent" because it drops the description field, so the speed
