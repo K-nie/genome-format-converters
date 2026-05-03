@@ -58,7 +58,7 @@ TOOL_COLORS = {
     "pyhmmer":          PALETTE["bluish_green"],
     "bcftools-pyref":   PALETTE["orange"],
 
-    # Phase-4 reservations (consistent with feature_matrix.py columns).
+    # Phase-4 reservations (consistent with plot_feature_matrix.py columns).
     # Assigned from the same palette so adding them later does not break
     # any existing figure's colour scheme.
     "samtools":         PALETTE["bluish_green"],

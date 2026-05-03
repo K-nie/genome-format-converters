@@ -23,8 +23,8 @@ bash benchmarks/run_bench.sh
 # 4. Render figures and tables.
 python benchmarks/analyze/collect_results.py
 python benchmarks/analyze/plot_wall_time.py
-python benchmarks/analyze/plot_memory.py
-python benchmarks/analyze/feature_matrix.py
+python benchmarks/analyze/plot_peak_memory.py
+python benchmarks/analyze/plot_feature_matrix.py
 ```
 
 All tasks are opt-out, not opt-in: comment out lines in `run_bench.sh` to

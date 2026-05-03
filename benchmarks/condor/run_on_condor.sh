@@ -129,8 +129,8 @@ bash benchmarks/run_bench.sh
 
 # ---- render figures ---------------------------------------------------
 python benchmarks/analyze/plot_wall_time.py  || echo "[warn] wall-time figure failed"
-python benchmarks/analyze/plot_memory.py     || echo "[warn] memory figure failed"
-python benchmarks/analyze/feature_matrix.py  || echo "[warn] feature matrix failed"
+python benchmarks/analyze/plot_peak_memory.py || echo "[warn] memory figure failed"
+python benchmarks/analyze/plot_feature_matrix.py || echo "[warn] feature matrix failed"
 
 # ---- package results for transfer back to submit host -----------------
 timestamp="$(date +%Y%m%d-%H%M%S)"

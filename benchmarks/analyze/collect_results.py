@@ -2,7 +2,7 @@
 """Concatenate every `results/raw/T*.tsv` into `results/raw/all.tsv`.
 
 Run after ``run_bench.sh``. Figures (`plot_wall_time.py`,
-`plot_memory.py`) read from `all.tsv`.
+`plot_peak_memory.py`) read from `all.tsv`.
 """
 from pathlib import Path
 import sys
