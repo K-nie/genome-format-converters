@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Supplementary figure — cross-replicate variance per (task, tool).
+# Author: Benjamin Narh-Madey
+"""Supplementary figure — wall-time coefficient of variation per (task, tool).
 
-Boxplot of wall_s across replicates, grouped by task on x and tool by
-hue. With reps >= 2 the box collapses to a line and the median dot is
-the only visible mark; with reps >= 5 (production) the boxes carry
-real information about run-to-run jitter.
+Replaces the earlier boxplot/stripplot rendering. On the n=10
+production data, sd / median is sub-percent for most (task, tool)
+pairs; a log-y boxplot squashes the spread to invisibility. CV
+directly answers "how reproducible is each tool's wall time across
+replicates," which is the reproducibility claim the paper Methods
+section makes.
 
-Paper utility: paper claims "tight wall-time variance, reproducible
-across reps." This figure is the data behind that claim, suitable for
-a supplementary "S1 — measurement reproducibility" panel.
+CV = (std / mean) x 100%. Lower = more reproducible. Bars are sorted
+by CV ascending within each task panel so the eye reads "tightest
+on the left."
 
-Failed reps (exit_code != 0) excluded; tasks/tools with fewer than 2
-successful reps render as a single point (still informative — shows
-where reps are missing).
+Failed replicates (exit_code != 0) excluded; (task, tool) pairs with
+fewer than 2 successful replicates are dropped (CV undefined).
 """
 from pathlib import Path
 import sys
@@ -21,8 +23,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from _style import (
+    color_for_tool,
+    double_col_size,
+    save_figure,
+    set_bioinformatics_style,
+)
+
 RAW = Path(__file__).resolve().parent.parent / "results" / "raw" / "all.tsv"
-FIG = Path(__file__).resolve().parent.parent / "results" / "figures"
 
 
 def main() -> int:
@@ -35,27 +43,36 @@ def main() -> int:
         print("[error] no successful reps in all.tsv", file=sys.stderr)
         return 1
 
-    FIG.mkdir(parents=True, exist_ok=True)
-    sns.set_theme(style="whitegrid", context="paper")
+    grouped = df.groupby(["task", "tool"])["wall_s"]
+    counts = grouped.size()
+    means = grouped.mean()
+    stds = grouped.std(ddof=1)
+    cv_pct = (stds / means * 100.0).where(counts >= 2)
+    cv_df = cv_pct.dropna().reset_index(name="cv_pct")
+    if cv_df.empty:
+        print("[error] no (task, tool) pairs with >=2 successful reps", file=sys.stderr)
+        return 1
 
-    fig, ax = plt.subplots(figsize=(11, 5))
-    sns.boxplot(data=df, x="task", y="wall_s", hue="tool", ax=ax,
-                showfliers=True, fliersize=3, linewidth=0.8)
-    # Overlay individual reps as small dots so n-rep is visible.
-    sns.stripplot(data=df, x="task", y="wall_s", hue="tool", ax=ax,
-                  dodge=True, size=2.2, color="black", alpha=0.6,
-                  legend=False)
-    ax.set_yscale("log")
-    ax.set_ylabel("wall time (s, log scale)")
+    set_bioinformatics_style()
+
+    tool_order = ["gfc"] + sorted(t for t in cv_df["tool"].unique() if t != "gfc")
+    palette = {t: color_for_tool(t) for t in tool_order}
+
+    fig, ax = plt.subplots(figsize=double_col_size(height_in=4.5))
+    sns.barplot(data=cv_df, x="task", y="cv_pct", hue="tool",
+                hue_order=tool_order, palette=palette, ax=ax)
+    ax.set_ylabel("wall-time coefficient of variation (%) — lower is more reproducible")
     ax.set_xlabel("benchmark task")
-    n_reps = df.groupby(["task", "tool"]).size().min()
-    ax.set_title(f"Per-(task, tool) wall-time distribution — boxes show "
-                 f"replicate spread (min n={n_reps})")
-    ax.legend(title="tool", loc="best", frameon=False, fontsize=8)
+
+    n_reps_min = int(counts.min())
+    ax.set_title(f"Per-(task, tool) wall-time CV across replicates "
+                 f"(min n={n_reps_min}); CV = std/mean x 100%, "
+                 f"lower = more reproducible")
+    ax.legend(title="tool", loc="upper left",
+              bbox_to_anchor=(1.02, 1.0), frameon=False)
     fig.tight_layout()
-    for ext in ("png", "pdf"):
-        fig.savefig(FIG / f"variance.{ext}", dpi=300, bbox_inches="tight")
-    print(f"[done] wrote {FIG / 'variance.png'} + .pdf", file=sys.stderr)
+    save_figure(fig, "variance")
+    print(f"[done] wrote variance.png + .pdf", file=sys.stderr)
     return 0
 
 
