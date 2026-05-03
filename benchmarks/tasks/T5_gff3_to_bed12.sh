@@ -92,6 +92,36 @@ else
     echo "[skip] T5 AGAT (agat_convert_sp_gff2bed.pl not on PATH)" >&2
 fi
 
+# ---------- bedops convert2bed (secondary) ---------------------------------
+# bedops convert2bed (Neph 2012, Bioinformatics 28:1919) is the canonical
+# BED-conversion utility from the BED-native toolkit. `convert2bed
+# --input=gff` emits BED6 (not BED12 - bedops doesn't reconstruct
+# transcript blockCounts/blockSizes), so it is a fairer comparison
+# against AGAT's BED6 output than against the UCSC chain's BED12.
+if command -v convert2bed >/dev/null 2>&1; then
+    bedops_version="$(convert2bed --version 2>&1 | head -1 | tr -s ' ' | awk '{print $NF}' | tr -d '|')"
+    : "${bedops_version:=unknown}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bedops_rep${rep}"
+        mkdir -p "$out_dir"
+        # convert2bed reads stdin and writes stdout. Per-file loop with
+        # `< $f > $out_dir/$stem.bed` mirrors the UCSC chain.
+        # `--input=gff` accepts gff/gff3 alike. Trailing `; true` keeps
+        # one bad input from voiding the whole rep.
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T5" --tool "bedops" --version "$bedops_version" \
+            --replicate "$rep" \
+            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+                      stem=\$(basename \"\$f\" .gff3); \
+                      convert2bed --input=gff < \"\$f\" > '$out_dir/'\$stem.bed; \
+                   done; true" \
+            --notes "bedops convert2bed --input=gff (Neph 2012); BED6 output" \
+            >> "$out"
+    done
+else
+    echo "[skip] T5 bedops convert2bed (convert2bed not on PATH; bioconda: bedops)" >&2
+fi
+
 # ---------- BioConvert (framework comparator) -----------------------------
 # BioConvert gff32bed for cross-task framework parity with T1, T2, T4.
 if command -v bioconvert >/dev/null 2>&1; then
