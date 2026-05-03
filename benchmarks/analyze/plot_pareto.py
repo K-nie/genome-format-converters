@@ -1,29 +1,38 @@
 #!/usr/bin/env python3
+# Author: Benjamin Narh-Madey
 """Figure 6 — speed vs. memory Pareto scatter.
 
-One point per (task, tool) on a 2D plane: x = wall_s (log scale),
-y = peak_rss_mb (log scale). Lower-left = better tradeoff. Points are
-coloured by tool and labelled by task to make per-task tools easy to
-trace.
+One point per (task, tool) on a 2D log-log plane:
+  x = mean wall_s across replicates (lower is faster)
+  y = mean peak_rss_mb across replicates (lower uses less memory)
+
+Lower-left = better trade-off. Each point is coloured by tool via the
+shared `_style.TOOL_COLORS` mapping (same colour for the same tool in
+every figure) and labelled with its task code so dots can be traced
+without cross-referencing the legend.
 
 Paper utility: where the bar charts say "gfc is competitive on speed
-and dominant on memory," the Pareto plot SHOWS it — readers see
-plink2's chr22 datapoint sit way up the y-axis (1300 MB) while gfc
-sits in the lower left, even though plink2 wins on the x-axis. That
-visual is the headline argument for "memory-efficient alternative."
+and dominant on memory," the Pareto plot SHOWS it — the chr22 plink2
++ convertf points sit ~22x up the y-axis at ~1300 MB while every gfc
+point clusters at ~60 MB across all eight tasks. That horizontal
+band IS the memory-efficiency story.
 
-Failed reps are excluded; only successful (exit_code == 0) replicates
-contribute.
+Failed replicates are excluded (exit_code == 0 only).
 """
 from pathlib import Path
 import sys
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+
+from _style import (
+    color_for_tool,
+    double_col_size,
+    save_figure,
+    set_bioinformatics_style,
+)
 
 RAW = Path(__file__).resolve().parent.parent / "results" / "raw" / "all.tsv"
-FIG = Path(__file__).resolve().parent.parent / "results" / "figures"
 
 
 def main() -> int:
@@ -36,39 +45,40 @@ def main() -> int:
         print("[error] no successful reps in all.tsv", file=sys.stderr)
         return 1
 
-    # Mean per (task, tool) so each tool plots one point per task, not
-    # `n_replicates` overlapping dots.
     g = df.groupby(["task", "tool"], as_index=False).agg(
         wall_s=("wall_s", "mean"),
         peak_rss_mb=("peak_rss_mb", "mean"),
     )
 
-    FIG.mkdir(parents=True, exist_ok=True)
-    sns.set_theme(style="whitegrid", context="paper")
+    set_bioinformatics_style()
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.scatterplot(data=g, x="wall_s", y="peak_rss_mb",
-                    hue="tool", style="tool", s=140, ax=ax,
-                    alpha=0.85, edgecolor="black", linewidth=0.5)
+    fig, ax = plt.subplots(figsize=double_col_size(height_in=5.0))
+
+    tools = ["gfc"] + sorted(t for t in g["tool"].unique() if t != "gfc")
+    for tool in tools:
+        sub = g[g["tool"] == tool]
+        ax.scatter(sub["wall_s"], sub["peak_rss_mb"],
+                   c=color_for_tool(tool), s=80, label=tool,
+                   alpha=0.85, edgecolor="black", linewidth=0.5)
+
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("wall time (s, log scale)")
-    ax.set_ylabel("peak RSS (MB, log scale)")
-    ax.set_title("Speed vs. memory tradeoff — one point per (task, tool); "
+    ax.set_xlabel("wall time (s, log scale) — lower is faster")
+    ax.set_ylabel("peak resident set size (MB, log scale) — lower uses less memory")
+    ax.set_title("Speed vs. memory trade-off across all (task, tool) pairs; "
                  "lower-left is better")
 
-    # Annotate each point with its task label so the reader can trace
-    # which dots are which task without cross-referencing the legend.
+    # Per-point task label — small offset so dot + label do not overlap.
     for _, row in g.iterrows():
         ax.annotate(row["task"], (row["wall_s"], row["peak_rss_mb"]),
                     xytext=(4, 4), textcoords="offset points",
-                    fontsize=7, alpha=0.7)
+                    fontsize=6, alpha=0.7)
 
-    ax.legend(title="tool", loc="best", frameon=False, fontsize=8)
+    ax.legend(title="tool", loc="upper left",
+              bbox_to_anchor=(1.02, 1.0), frameon=False)
     fig.tight_layout()
-    for ext in ("png", "pdf"):
-        fig.savefig(FIG / f"pareto.{ext}", dpi=300, bbox_inches="tight")
-    print(f"[done] wrote {FIG / 'pareto.png'} + .pdf", file=sys.stderr)
+    save_figure(fig, "pareto")
+    print(f"[done] wrote pareto.png + .pdf", file=sys.stderr)
     return 0
 
 
