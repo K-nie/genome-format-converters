@@ -61,8 +61,32 @@ def main() -> int:
     fs = _first_match(disk_block, r"^(\S+)\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+",
                      group=1) or "—"
 
+    # The `=== tool versions ===` section is whatever each probe wrote
+    # to stdout/stderr — multi-line --help dumps, "not installed" fallback
+    # lines, the occasional `command not found` from bash. We want the
+    # table to show *only* installed-tool version strings, one per row,
+    # so the Methods section reads cleanly. Filter aggressively here
+    # rather than at the source: it's easier to reason about the raw
+    # log when something looks off.
     tools = _section(text, "tool versions").splitlines()
-    tool_lines = [t for t in tools if t and not t.startswith("[")]
+    _NOISE_SUBSTRINGS = (
+        "not installed",
+        "command not found",
+        "Read and write (return) sequences",  # seqret -help line 1
+        "# hmmsearch ::",                     # hmmsearch -h header
+        "Usage:",
+        "search profile",
+    )
+    tool_lines = []
+    for t in tools:
+        t = t.strip()
+        if not t:
+            continue
+        if t.startswith("[") or t.startswith("#"):
+            continue
+        if any(noise in t for noise in _NOISE_SUBSTRINGS):
+            continue
+        tool_lines.append(t)
 
     lines = [
         "| Field | Value |",
@@ -73,10 +97,16 @@ def main() -> int:
         f"| Sockets × cores × threads | {sockets} × {cores_per_socket} × {threads_per_core} (= {cpus} logical CPUs) |",
         f"| RAM (total) | {total_ram} |",
         f"| Filesystem (benchmarks/) | {fs} |",
-        "| Key tool versions | <ul>",
     ]
-    for tl in tool_lines[:10]:  # cap to keep the table reasonable
-        lines.append(f"| | `{tl.strip()}` |")
+    # Render every detected tool-version string on its own row with a
+    # blank label cell — GitHub-flavoured markdown handles this cleanly
+    # without the broken <ul>-inside-cell trick the previous version used.
+    if tool_lines:
+        lines.append(f"| Key tool versions | `{tool_lines[0]}` |")
+        for tl in tool_lines[1:15]:  # cap so a 200-pkg dump can't blow up the table
+            lines.append(f"|  | `{tl}` |")
+    else:
+        lines.append("| Key tool versions | — |")
     lines.append("")
 
     out_md = "\n".join(lines) + "\n"

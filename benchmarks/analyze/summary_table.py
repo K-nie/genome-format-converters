@@ -169,15 +169,30 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
     competitor are visible — not just the single fastest one. Hides the
     'gfc loses to plink2 by 14x but beats AGAT by 13x on the same task'
     structure that the headline summary collapses.
+
+    The verdict integrates gfc's correctness flag against the per-task
+    reference (see check_correctness.py). A speed/memory win where gfc's
+    output didn't match the reference is annotated with `*` and reads as
+    "gfc wins*" so the headline can't paper over a documented semantic
+    divergence (T1 chrom-encoding, T2 indel/A1-A2, T3 GenBank rendering,
+    T4 transcript-centric vs faithful GFF, etc.). The Methods footnotes
+    in check_correctness.py spell out which divergence applies to which
+    task and why we keep the strict comparator instead of canonicalising
+    post-hoc.
     """
     wall = _agg_tool(df, "wall_s")
     rss = _agg_tool(df, "peak_rss_mb")
+    # gfc correctness flag per task — taken from rep1 (deterministic, so
+    # it propagates to every rep already).
+    correctness = (df[(df["tool"] == "gfc") & (df["replicate"] == 1)]
+                   .set_index("task")["correct"].astype(str))
     rows = []
     for task in sorted({t for (t, _) in wall.index}):
         if (task, "gfc") not in wall.index:
             continue
         gfc_wall_mean = wall.loc[(task, "gfc"), "wall_s_mean"]
         gfc_rss_mean = rss.loc[(task, "gfc"), "peak_rss_mb_mean"]
+        gfc_correct = correctness.get(task, "")
         for comp_tool in sorted({tool for (t, tool) in wall.index
                                  if t == task and tool != "gfc"}):
             cw = wall.loc[(task, comp_tool), "wall_s_mean"]
@@ -186,10 +201,21 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
             mem_ratio = cr / gfc_rss_mean if gfc_rss_mean else None
             wins_speed = speedup is not None and speedup > 1.0
             wins_mem = mem_ratio is not None and mem_ratio > 1.0
-            verdict = ("gfc wins" if wins_speed and wins_mem
-                       else "speed only" if wins_speed
-                       else "memory only" if wins_mem
-                       else "loses")
+            base_verdict = ("gfc wins" if wins_speed and wins_mem
+                            else "speed only" if wins_speed
+                            else "memory only" if wins_mem
+                            else "loses")
+            # Annotate the verdict with the correctness situation so a
+            # reviewer reading the table top-down can't miss that the
+            # speed/memory headline came with a structural divergence.
+            if gfc_correct == "1":
+                verdict = base_verdict
+            elif gfc_correct == "0":
+                verdict = f"{base_verdict}* (gfc≠ref, see Methods)"
+            elif gfc_correct == "skip":
+                verdict = f"{base_verdict} (format-only check)"
+            else:  # blank — comparator could not adjudicate
+                verdict = f"{base_verdict} (correctness unchecked)"
             rows.append({
                 "task": task,
                 "competitor": comp_tool,
@@ -199,6 +225,7 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
                 "gfc_rss_mb": f"{gfc_rss_mean:.2f}",
                 "comp_rss_mb": f"{cr:.2f}",
                 "mem_ratio_x": f"{mem_ratio:.2f}x" if mem_ratio else "—",
+                "gfc_correct": gfc_correct or "—",
                 "verdict": verdict,
             })
     return pd.DataFrame(rows)
@@ -207,14 +234,16 @@ def build_per_pair(df: pd.DataFrame) -> pd.DataFrame:
 def render_per_pair_markdown(table: pd.DataFrame) -> str:
     """Markdown for the per-(task, competitor) table — one row per
     pairwise comparison so the paper can read 'gfc beats AGAT 13x on
-    T4' off the table without doing arithmetic."""
+    T4' off the table without doing arithmetic. Correctness column is
+    sandwiched between performance metrics and the verdict so the
+    eye lands on it before the win/lose call."""
     cols = ["task", "competitor", "gfc_wall_s", "comp_wall_s",
             "speedup_x", "gfc_rss_mb", "comp_rss_mb", "mem_ratio_x",
-            "verdict"]
+            "gfc_correct", "verdict"]
     headers = ["Task", "Competitor", "gfc wall (s)", "Comp wall (s)",
                "Speedup (>1 = gfc faster)", "gfc RSS (MB)",
                "Comp RSS (MB)", "Mem ratio (>1 = gfc smaller)",
-               "Verdict"]
+               "gfc correct vs ref", "Verdict"]
     lines = ["| " + " | ".join(headers) + " |",
              "|" + "|".join("---" for _ in headers) + "|"]
     for _, row in table.iterrows():

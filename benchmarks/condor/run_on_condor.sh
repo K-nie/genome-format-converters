@@ -86,16 +86,29 @@ mkdir -p benchmarks/results
     df -h benchmarks/ 2>/dev/null || true
     echo
     echo "=== tool versions ==="
-    gfc --version
-    python --version
+    # Each probe emits one clean "<name> <version>" line so
+    # analyze/hardware_table.py can render them verbatim. stderr is
+    # routed to /dev/null so `command not found` and AGAT's noisy
+    # banner don't leak in. The fallback echoes a sentinel that
+    # hardware_table.py filters out via its noise list.
+    gfc --version 2>/dev/null | head -1 || echo "gfc not installed"
+    python --version 2>/dev/null
     bcftools --version 2>/dev/null | head -1 || echo "bcftools not installed"
     samtools --version 2>/dev/null | head -1 || echo "samtools not installed"
     plink2 --version 2>/dev/null | head -1 || echo "plink2 not installed"
     plink --version 2>/dev/null | head -1 || echo "plink 1.9 not installed"
-    gffread --version 2>/dev/null || echo "gffread not installed"
-    agat_convert_sp_gff2gtf.pl --help 2>&1 | head -1 || echo "AGAT not installed"
-    seqret -help 2>&1 | head -3 || echo "EMBOSS seqret not installed"
-    hmmsearch -h 2>&1 | head -1 || echo "HMMER not installed"
+    gffread --version 2>/dev/null | head -1 || echo "gffread not installed"
+    # AGAT 1.x exposes `agat_convert_sp_gff2gtf.pl --version` cleanly.
+    # The previous probe used --help which prints 80+ lines of usage.
+    agat_convert_sp_gff2gtf.pl --version 2>/dev/null | head -1 \
+        || echo "AGAT not installed"
+    # EMBOSS seqret has no --version; grep the package label out of -help.
+    seqret -help 2>&1 | grep -m1 -E "^Version:" \
+        || echo "EMBOSS seqret not installed"
+    # HMMER's -h banner has a version on line 2 (`# HMMER 3.4 ...`); -h
+    # line 1 is the descriptor we previously captured by mistake.
+    hmmsearch -h 2>&1 | grep -m1 -E "^# HMMER" \
+        || echo "HMMER not installed"
     echo
     echo "=== conda package versions ==="
     conda list --export

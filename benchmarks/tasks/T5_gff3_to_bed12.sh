@@ -93,4 +93,24 @@ else
 fi
 
 echo "[done] T5 rows written to $out" >&2
+
+# Sanity-check the per-tool rep1 dirs BEFORE invoking the correctness
+# comparator so the bench log explains a blank `correct` cell at the
+# earliest possible point. The Apr 28 scarcity-16 run produced blank
+# correctness for both gfc and AGAT because gff3ToGenePred (UCSC's
+# stricter-than-spec GFF3 parser) silently emitted zero .bed files on
+# the Y1000+ tRNA-scan slice — the `; true` in the UCSC loop above
+# swallowed the per-file failures and check_correctness.py had nothing
+# to compare against.
+for tool_subdir in gfc_rep1 ucsc_rep1 agat_rep1; do
+    d="$bench_dir/$tool_subdir"
+    if [[ -d "$d" ]]; then
+        n_bed=$(find "$d" -maxdepth 1 \( -name "*.bed" -o -name "*.bed12" \) | wc -l | tr -d ' ')
+        echo "[corr-precheck] $tool_subdir: $n_bed .bed/.bed12 file(s)" >&2
+        if [[ "$n_bed" -eq 0 ]]; then
+            echo "[corr-precheck] WARNING: $tool_subdir wrote zero .bed/.bed12 files — correctness will be blank for this tool" >&2
+        fi
+    fi
+done
+
 python "$repo/benchmarks/check_correctness.py" --task T5 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T5 correctness check failed (non-fatal)" >&2

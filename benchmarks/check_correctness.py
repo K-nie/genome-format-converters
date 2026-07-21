@@ -380,7 +380,16 @@ def check_t5(gfc_dir: Path, ref_dir: Path) -> str:
     cumulative columns 1..12)."""
     gfc_files = sorted(list(gfc_dir.glob("*.bed12")) + list(gfc_dir.glob("*.bed")))
     ref_files = sorted(list(ref_dir.glob("*.bed")) + list(ref_dir.glob("*.bed12")))
+    # If either side is empty, trace WHICH side was missing so the bench
+    # log explains the blank `correct` cell instead of leaving it for the
+    # operator to dig out. The Apr 28 scarcity-16 run lost T5 correctness
+    # because gff3ToGenePred silently produced zero .bed files on the
+    # Y1000+ slice (UCSC's GFF3 parser rejects spec-valid rows), and
+    # `; true` in the task harness swallowed the failure.
     if not gfc_files or not ref_files:
+        print(f"[check_t5] blank: gfc_dir={gfc_dir} has {len(gfc_files)} "
+              f".bed12/.bed files; ref_dir={ref_dir} has {len(ref_files)} "
+              ".bed/.bed12 files", file=sys.stderr)
         return ""
 
     # Honest check: shrink to min(cols) so a 6-col reference doesn't
@@ -587,6 +596,15 @@ def populate(task: str, bench_dir: Path, tsv_path: Path) -> str:
 
     for r in rows[1:]:
         r[ix_correct] = verdict_per_tool.get(r[ix_tool], "")
+
+    # If gfc itself came back blank ("" rather than "1"/"0"), surface that
+    # to stderr so the bench log makes the cause obvious. A blank gfc
+    # cell silently passes through plotting and would land in the paper
+    # tables otherwise.
+    if verdict_per_tool.get("gfc", "") == "":
+        print(f"[corr {task}] WARNING: gfc correctness blank — comparator "
+              f"could not adjudicate (see check_{task.lower()} stderr above)",
+              file=sys.stderr)
 
     n_in = len(rows)
     with tsv_path.open("w", newline="") as fh:

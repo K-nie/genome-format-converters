@@ -20,6 +20,7 @@ results/figures/*.png
 results/figures/*.pdf
 results/figures/*.svg
 results/figures/*.md
+results/figures/*.csv
 results/results.*.tar.gz
 results/hardware.log
 
