@@ -74,7 +74,10 @@ is documented as the cost of CLI scaffolding (argparse, validation,
 batch iteration) over a 50-line ad-hoc script.
 
 Full results, plots, and Methods footnotes:
-[`docs/manuscript/gfc_application_note_2026-04-29.md`](docs/manuscript/gfc_application_note_2026-04-29.md).
+[`docs/manuscript/gfc_application_note_2026-04-29.md`](docs/manuscript/gfc_application_note_2026-04-29.md)
+(Markdown source; plain-text mirror at
+[`docs/manuscript/gfc_application_note_2026-04-29.txt`](docs/manuscript/gfc_application_note_2026-04-29.txt)
+for paste-into-submission-portal use).
 Reproducibility: `bash benchmarks/run_bench.sh` after `pip install -e .`.
 
 ## Installation

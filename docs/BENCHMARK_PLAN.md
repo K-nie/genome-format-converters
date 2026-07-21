@@ -181,6 +181,7 @@ cluster job 136866 (10 replicates × 8 tasks × 14 competitors, ~10 hour
 wallclock, sd < 2% on every task). Results, figures, and Methods write-up:
 
 - Manuscript: [`docs/manuscript/gfc_application_note_2026-04-29.md`](manuscript/gfc_application_note_2026-04-29.md)
+  (plain-text mirror at `gfc_application_note_2026-04-29.txt`)
 - Per-task TSVs: `benchmarks/results/raw/T*.tsv` (n=10 replicates each)
 - Headline tables: `benchmarks/results/figures/summary_table.md`,
   `summary_per_pair.md`

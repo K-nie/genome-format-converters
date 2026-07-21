@@ -35,7 +35,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   streaming text parser replacing bcbio-gff `GFF.parse` on T4/T5; raw
   FASTA reader replacing biopython on T7.
 - **Application Note manuscript draft** at
-  `docs/manuscript/gfc_application_note_2026-04-29.md` (Q1/Q2 target).
+  `docs/manuscript/gfc_application_note_2026-04-29.md` (Q1/Q2 target),
+  with a plain-text mirror `gfc_application_note_2026-04-29.txt` for
+  journal submission portals that don't accept Markdown.
 
 ### Changed
 - `pyproject.toml` adds `cyvcf2>=0.30` and `numpy>=1.20` as runtime
