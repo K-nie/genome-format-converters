@@ -7,9 +7,12 @@ concatenatable.
 
 Measurements:
   wall_s       wall-clock seconds via ``time.perf_counter()``.
-  peak_rss_mb  peak resident set size of the child process *and all its
-               descendants*, polled every 50 ms via ``psutil``. Falls back
-               to 0 if ``psutil`` isn't available.
+  peak_rss_mb  ``ru_maxrss`` from the child process via ``os.wait4``. This
+               is the kernel-tracked peak RSS the OS records for the
+               specific child, not a polled snapshot of the live RSS — so
+               mmap-heavy tools (plink2) report what they actually
+               resident-set, not what they mmap'd. Units: KB on Linux,
+               bytes on macOS / *BSD; normalised to bytes here.
 
 Schema (matches benchmarks/README.md):
   task tool version replicate wall_s peak_rss_mb exit_code correct notes
@@ -17,64 +20,77 @@ Schema (matches benchmarks/README.md):
 from __future__ import annotations
 
 import argparse
-import shlex
+import os
+import resource
 import subprocess
 import sys
-import threading
 import time
-from typing import Optional
-
-try:
-    import psutil  # type: ignore
-except ImportError:  # pragma: no cover
-    psutil = None
 
 
-def _poll_peak_rss(pid: int, stop_event: threading.Event,
-                   peak: dict, interval_s: float = 0.05) -> None:
-    """Background thread: poll the process tree's RSS every `interval_s`
-    seconds, tracking the highest value seen."""
-    if psutil is None:
-        return
-    try:
-        proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        return
-    while not stop_event.is_set():
-        try:
-            total = proc.memory_info().rss
-            for child in proc.children(recursive=True):
-                try:
-                    total += child.memory_info().rss
-                except psutil.NoSuchProcess:
-                    continue
-            if total > peak["rss"]:
-                peak["rss"] = total
-        except psutil.NoSuchProcess:
-            break
-        time.sleep(interval_s)
+def run_once(cmd: str, *, task: str, tool: str,
+             replicate: int) -> tuple[float, int, int]:
+    """Run `cmd` under a shell. Return (wall_seconds, peak_rss_bytes, exit_code).
 
+    Uses ``os.wait4`` so we get the rusage of the specific child, not the
+    accumulated rusage of all children since process start (which is what
+    ``resource.getrusage(RUSAGE_CHILDREN)`` would give).
 
-def run_once(cmd: str) -> tuple[float, int, int]:
-    """Run `cmd` under a shell. Return (wall_seconds, peak_rss_bytes, exit_code)."""
-    peak = {"rss": 0}
-    stop_event = threading.Event()
+    Subprocess stderr is streamed to a per-run log file under
+    ``$GFC_BENCH_LOG_DIR`` (default /tmp/gfc_bench_cmd_logs/). On non-zero
+    exit, the tail of that log is echoed to this process's own stderr so
+    it shows up in the Condor ``bench.<id>.err`` capture and the failure
+    is debuggable without having to ssh to the execute slot. Successful
+    runs delete the log file to avoid clutter.
+
+    Streaming to a file rather than capturing via subprocess.PIPE keeps
+    the parent's RSS low (no PIPE buffering in this process), so the
+    benchmarked child's RSS measurement isn't perturbed.
+    """
+    log_dir = os.environ.get("GFC_BENCH_LOG_DIR", "/tmp/gfc_bench_cmd_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"{task}_{tool}_rep{replicate}.err")
 
     start = time.perf_counter()
-    # shell=True so the command string can use pipes / redirects when
-    # tasks need them (e.g. `bcftools view | awk | gzip > out`).
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
-    poller = threading.Thread(
-        target=_poll_peak_rss, args=(proc.pid, stop_event, peak)
-    )
-    poller.start()
+    with open(log_path, "wb") as err_log:
+        # shell=True so the command string can use pipes / redirects when
+        # tasks need them (e.g. `bcftools view | awk | gzip > out`).
+        proc = subprocess.Popen(
+            cmd, shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=err_log,
+        )
+        _pid, status, ru = os.wait4(proc.pid, 0)
+        elapsed = time.perf_counter() - start
+    rc = os.waitstatus_to_exitcode(status)
+    # Tell Popen the child is reaped so its destructor doesn't complain.
+    proc.returncode = rc
 
-    rc = proc.wait()
-    stop_event.set()
-    poller.join(timeout=1.0)
-    elapsed = time.perf_counter() - start
-    return elapsed, peak["rss"], rc
+    if rc != 0:
+        try:
+            with open(log_path, errors="replace") as f:
+                tail = f.read()[-2000:]
+        except OSError:
+            tail = "(could not read stderr log)"
+        print(
+            f"[FAIL] {task}/{tool}/rep{replicate} exit={rc}\n"
+            f"---- stderr tail ({log_path}) ----\n"
+            f"{tail}\n"
+            f"---- end {task}/{tool}/rep{replicate} stderr ----",
+            file=sys.stderr,
+        )
+    else:
+        try:
+            os.unlink(log_path)
+        except OSError:
+            pass
+
+    # ru_maxrss units differ by platform: KB on Linux, bytes on macOS/BSD.
+    if sys.platform == "darwin" or sys.platform.startswith("freebsd"):
+        peak_rss_bytes = ru.ru_maxrss
+    else:
+        peak_rss_bytes = ru.ru_maxrss * 1024
+
+    return elapsed, peak_rss_bytes, rc
 
 
 def main() -> None:
@@ -105,14 +121,21 @@ def main() -> None:
     if missing:
         ap.error(f"missing required args for a measurement run: {', '.join(missing)}")
 
-    wall_s, peak_rss_b, rc = run_once(args.cmd)
+    wall_s, peak_rss_b, rc = run_once(
+        args.cmd, task=args.task, tool=args.tool, replicate=args.replicate,
+    )
     peak_rss_mb = peak_rss_b / (1024 * 1024)
     row = [
         args.task, args.tool, args.version, str(args.replicate),
         f"{wall_s:.4f}", f"{peak_rss_mb:.2f}",
         str(rc), args.correct, args.notes,
     ]
-    print("\t".join(row))
+    # flush=True so the row hits disk before this process exits — protects
+    # against a SIGTERM / OOM kill mid-shutdown that would otherwise drop a
+    # block-buffered stdout write to the per-task TSV. Run 136838 lost
+    # T1's gfc and convertf-rep1 rows in a way consistent with this; the
+    # explicit flush eliminates that class of failure.
+    print("\t".join(row), flush=True)
 
 
 if __name__ == "__main__":

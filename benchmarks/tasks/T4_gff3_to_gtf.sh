@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# T4 — GFF3 → GTF.  Competitors: AGAT agat_sp_gff2gtf.pl, gffread.
+# T4 — GFF3 → GTF.  Competitors: AGAT agat_convert_sp_gff2gtf.pl, gffread.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,8 +8,13 @@ task="T4_gff3_to_gtf"
 out="$repo/benchmarks/results/raw/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
-input_dir="$repo/tests/test_data"
-: "${GFC_BENCH_INPUT_DIR:=$input_dir}"
+# Stage 1: prefer the committed Y1000+ tRNA-scan slice when present.
+y1000_dir="$repo/benchmarks/data/y1000plus"
+if compgen -G "$y1000_dir/*.gff3" >/dev/null 2>&1; then
+    GFC_BENCH_INPUT_DIR="$y1000_dir"
+else
+    GFC_BENCH_INPUT_DIR="${GFC_BENCH_INPUT_DIR:-$repo/tests/test_data}"
+fi
 : "${GFC_BENCH_REPLICATES:=5}"
 
 bench_dir="/tmp/gfc_bench_${task}"
@@ -48,25 +53,35 @@ else
 fi
 
 # ---------- AGAT ------------------------------------------------------------
-# AGAT ships a dedicated agat_sp_gff2gtf.pl. It is a Perl tool that does
+# AGAT ships a dedicated agat_convert_sp_gff2gtf.pl. It is a Perl tool that does
 # deep validation/conversion of the GFF hierarchy, so it is substantially
 # slower than gffread or gfc — this is by design and worth showing.
-if command -v agat_sp_gff2gtf.pl >/dev/null 2>&1; then
-    agat_version="$(agat_sp_gff2gtf.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' ' || echo unknown)"
+if command -v agat_convert_sp_gff2gtf.pl >/dev/null 2>&1; then
+    # AGAT prints version inside a pipe-delimited banner; strip both
+    # whitespace and the trailing `|` so the TSV doesn't show "v1.4.0|".
+    agat_version="$(agat_convert_sp_gff2gtf.pl --help 2>&1 | grep -i 'Version' | head -1 | tr -s ' ' | cut -d':' -f2- | tr -d ' |' || echo unknown)"
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         out_dir="$bench_dir/agat_rep${rep}"
         mkdir -p "$out_dir"
+        # AGAT 1.4 unconditionally writes <input>.agat.log next to its
+        # CWD — running from $PWD spreads 20+ log files into the repo
+        # root over the course of a smoke. The `cd` confines them to
+        # the per-rep output dir where they're trivially cleaned up.
+        # Inputs are referenced by absolute path so the cd doesn't
+        # break the file lookup.
         python "$repo/benchmarks/bench_one.py" \
             --task "T4" --tool "AGAT" --version "$agat_version" \
             --replicate "$rep" \
-            --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
+            --cmd "cd '$out_dir' && \
+                   for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      agat_sp_gff2gtf.pl --gff \"\$f\" -o \"$out_dir/\$stem.gtf\"; \
+                      agat_convert_sp_gff2gtf.pl --gff \"\$f\" -o \"\$stem.gtf\"; \
                    done" \
             >> "$out"
     done
 else
-    echo "[skip] T4 AGAT (agat_sp_gff2gtf.pl not on PATH)" >&2
+    echo "[skip] T4 AGAT (agat_convert_sp_gff2gtf.pl not on PATH)" >&2
 fi
 
 echo "[done] T4 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T4 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T4 correctness check failed (non-fatal)" >&2

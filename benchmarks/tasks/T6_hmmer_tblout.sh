@@ -37,19 +37,32 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         >> "$out"
 done
 
-# awk baseline: fixed-width cut, collapses description column — demonstrates
-# why gfc's column-aware implementation is worth having.
-if command -v awk >/dev/null 2>&1; then
+# ---------- pyhmmer in-process baseline -------------------------------------
+# pyhmmer parses tblout via HMMER's own C library bindings — apples-to-apples
+# competitor for column-aware tblout parsing, available on bioconda.
+if python -c "import pyhmmer" 2>/dev/null; then
+    pyhmmer_version="$(python -c 'import pyhmmer; print(pyhmmer.__version__)' 2>/dev/null || echo unknown)"
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
-        out_dir="$bench_dir/awk_rep${rep}"
+        out_dir="$bench_dir/pyhmmer_rep${rep}"
         mkdir -p "$out_dir"
         python "$repo/benchmarks/bench_one.py" \
-            --task "T6" --tool "awk" --version "$((awk --version 2>&1 || echo awk) | head -1 | cut -d' ' -f1-3 | tr ' ' '-')" \
+            --task "T6" --tool "pyhmmer" --version "$pyhmmer_version" \
             --replicate "$rep" \
-            --cmd "awk '!/^#/{print \$1\"\\t\"\$3\"\\t\"\$5\"\\t\"\$6}' '$input_dir/sample.tblout' > '$out_dir/sample.tsv'" \
-            --notes "drops description column — NOT equivalent" \
+            --cmd "python '$repo/benchmarks/refs/t6_pyhmmer.py' \
+                   --tblout '$input_dir/sample.tblout' \
+                   --output '$out_dir/sample.tsv'" \
             >> "$out"
     done
+else
+    echo "[skip] T6 pyhmmer (pyhmmer not importable)" >&2
 fi
 
+# Removed in Stage 1 (bench/stage1-fairness): the awk one-liner baseline
+# previously here. Its own --notes column already declared the output
+# "NOT equivalent" because it drops the description field, so the speed
+# comparison wasn't apples-to-apples. pyhmmer above is the correct
+# in-process competitor; the reference parser lives in
+# benchmarks/refs/t6_pyhmmer.py.
+
 echo "[done] T6 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T6 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T6 correctness check failed (non-fatal)" >&2

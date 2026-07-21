@@ -25,7 +25,35 @@ if [[ -z "$conda_base" && -d "$HOME/miniforge3" ]]; then
 fi
 # shellcheck disable=SC1091
 source "$conda_base/etc/profile.d/conda.sh"
+
+# Initialise vars that some conda activate.d hooks (notably aster, mkl,
+# certain bioconda packages) extend without first checking they are set.
+# Without this, `set -u` blows up at activation with messages like
+# `aster_activate.sh: line 1: LD_LIBRARY_PATH: unbound variable` and the
+# whole job exits in 26 seconds before any task can run (run 136836).
+: "${LD_LIBRARY_PATH:=}"
+: "${PYTHONPATH:=}"
+export LD_LIBRARY_PATH PYTHONPATH
+
+# Bracket `conda activate` with `set +u` because conda's hook ecosystem
+# is allowed to be loose about defined-ness even after the init above —
+# safer to drop nounset for the duration of activation than to chase
+# every package's hook.
+set +u
 conda activate gfc-bench
+set -u
+
+# Install gfc from THIS checkout in editable mode so the cluster runs the
+# converters as currently committed on bench/stage1-fairness. Without this
+# the env's pip-installed gfc 0.1.5 (frozen at env-creation time) wins on
+# PATH and every src/ optimisation since 0.1.5 is silently bypassed —
+# exactly what made T3/T4/T5/T7 wall numbers stuck across runs 136838 and
+# 136846 even after commits 7c0c71d, 1d1fd14, ef14752, 8494f14 landed.
+# `--no-deps` keeps us from re-resolving the conda env's already-installed
+# pysam / cyvcf2 / biopython etc.
+echo "[info] reinstalling gfc from local checkout (editable, no deps)" >&2
+pip install -e . --no-deps --quiet --force-reinstall 2>&1 | tail -3 || \
+    echo "[warn] pip install -e . failed; cluster will run conda's pinned gfc" >&2
 
 echo "[info] PATH=$PATH"
 echo "[info] python=$(command -v python)"
@@ -58,16 +86,29 @@ mkdir -p benchmarks/results
     df -h benchmarks/ 2>/dev/null || true
     echo
     echo "=== tool versions ==="
-    gfc --version
-    python --version
+    # Each probe emits one clean "<name> <version>" line so
+    # analyze/hardware_table.py can render them verbatim. stderr is
+    # routed to /dev/null so `command not found` and AGAT's noisy
+    # banner don't leak in. The fallback echoes a sentinel that
+    # hardware_table.py filters out via its noise list.
+    gfc --version 2>/dev/null | head -1 || echo "gfc not installed"
+    python --version 2>/dev/null
     bcftools --version 2>/dev/null | head -1 || echo "bcftools not installed"
     samtools --version 2>/dev/null | head -1 || echo "samtools not installed"
     plink2 --version 2>/dev/null | head -1 || echo "plink2 not installed"
     plink --version 2>/dev/null | head -1 || echo "plink 1.9 not installed"
-    gffread --version 2>/dev/null || echo "gffread not installed"
-    agat_sp_gff2gtf.pl --help 2>&1 | head -1 || echo "AGAT not installed"
-    seqret -help 2>&1 | head -3 || echo "EMBOSS seqret not installed"
-    hmmsearch -h 2>&1 | head -1 || echo "HMMER not installed"
+    gffread --version 2>/dev/null | head -1 || echo "gffread not installed"
+    # AGAT 1.x exposes `agat_convert_sp_gff2gtf.pl --version` cleanly.
+    # The previous probe used --help which prints 80+ lines of usage.
+    agat_convert_sp_gff2gtf.pl --version 2>/dev/null | head -1 \
+        || echo "AGAT not installed"
+    # EMBOSS seqret has no --version; grep the package label out of -help.
+    seqret -help 2>&1 | grep -m1 -E "^Version:" \
+        || echo "EMBOSS seqret not installed"
+    # HMMER's -h banner has a version on line 2 (`# HMMER 3.4 ...`); -h
+    # line 1 is the descriptor we previously captured by mistake.
+    hmmsearch -h 2>&1 | grep -m1 -E "^# HMMER" \
+        || echo "HMMER not installed"
     echo
     echo "=== conda package versions ==="
     conda list --export
@@ -89,8 +130,11 @@ else
     echo "[info] VCF tasks will run on bundled tiny.vcf fixture"
 fi
 
-# 5 replicates by default; set GFC_BENCH_REPLICATES in env to override.
-export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-5}"
+# 10 replicates by default (Stage 1 audit: n=3 was too few for SD-based
+# claims given the ~1% CV on T1/T2). Set GFC_BENCH_REPLICATES in env to
+# override. Tasks > 30s use n=10; short tasks (T3/T4/T5) absorb startup
+# jitter at higher n but n=10 is the floor.
+export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-10}"
 echo "[info] replicates per tool per task: $GFC_BENCH_REPLICATES"
 
 # ---- run all tasks ----------------------------------------------------

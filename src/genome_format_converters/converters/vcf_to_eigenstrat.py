@@ -18,8 +18,15 @@ polarisation can be driven from an outgroup `--ancestral-fasta` or the
 from pathlib import Path
 from typing import Optional, Tuple
 
+import numpy as np
+
 try:
-    import pysam
+    import cyvcf2
+except ImportError:
+    cyvcf2 = None
+
+try:
+    import pysam  # still used by _eigenstrat_common.AncestralProvider for FASTA random access
 except ImportError:
     pysam = None
 
@@ -49,6 +56,30 @@ from ._eigenstrat_common import (
 )
 
 _VCF_EXTS = [".vcf", ".vcf.gz", ".bcf"]
+
+# cyvcf2.Variant.gt_types returns a numpy int32 array of {0, 1, 2, 3} per sample:
+#   0 = HOM_REF, 1 = HET, 2 = MISSING (./. or partial), 3 = HOM_ALT.
+# These two lookup tables map gt_types -> EIGENSTRAT byte ('0' / '1' / '2' / '9').
+# Indexing them with the int32 array vectorises the per-sample encoding into a
+# single C-level numpy gather, eliminating the per-sample Python loop that was
+# the dominant cost in the previous pysam-based implementation.
+#
+# Unflipped (post-polarisation REF is the major allele): count copies of REF.
+#   HOM_REF (=2 copies of major) -> '2'
+#   HET     (=1 copy)             -> '1'
+#   MISSING                       -> '9'
+#   HOM_ALT (=0 copies)           -> '0'
+_LOOKUP_UNFLIPPED = np.array(
+    [ord("2"), ord("1"), ord("9"), ord("0")], dtype=np.uint8
+)
+# Flipped (ancestral disagreed with REF, so post-polarisation ALT is major).
+#   HOM_REF (=0 copies of major) -> '0'
+#   HET     (=1 copy)             -> '1'
+#   MISSING                       -> '9'
+#   HOM_ALT (=2 copies)           -> '2'
+_LOOKUP_FLIPPED = np.array(
+    [ord("0"), ord("1"), ord("9"), ord("2")], dtype=np.uint8
+)
 
 
 def _genotype_code(alleles, flipped: bool) -> str:
@@ -94,9 +125,17 @@ def _convert_file(in_file: Path, out_prefix: Path,
     skipped_maf = 0
     skipped_missing = 0
 
-    with pysam.VariantFile(str(in_file)) as vcf:
-        samples = list(vcf.header.samples)
-        contigs = set(vcf.header.contigs.keys())
+    # Stream `.geno` and `.snp` writes inside the read loop so chr22-scale
+    # inputs don't accumulate in RAM. Only the `also_plink` path needs the
+    # rows kept in memory (write_plink_sidecar consumes them after the loop).
+    snp_rows: list = [] if also_plink else None
+    geno_rows: list = [] if also_plink else None
+
+    with cyvcf2.VCF(str(in_file)) as vcf, \
+            open(geno_path, "w") as geno_fh, \
+            open(snp_path, "w") as snp_fh:
+        samples = list(vcf.samples)
+        contigs = set(vcf.seqnames)
 
         validate_map_coverage("pop-map", pop_map, samples, strict_maps)
         validate_map_coverage("sex-map", sex_map, samples, strict_maps)
@@ -104,15 +143,15 @@ def _convert_file(in_file: Path, out_prefix: Path,
 
         write_ind(ind_path, samples, pop_map, sex_map)
 
-        snp_rows = []
-        geno_rows = []
+        n_samples = len(samples)
 
-        for rec in vcf:
-            if not rec.alts or len(rec.alts) != 1:
+        for var in vcf:
+            # Multi-allelic / indel / non-ACGT filtering on REF/ALT.
+            if not var.ALT or len(var.ALT) != 1:
                 skipped_multiallelic += 1
                 continue
-            ref_a = rec.ref.upper()
-            alt_a = rec.alts[0].upper()
+            ref_a = var.REF.upper()
+            alt_a = var.ALT[0].upper()
             if len(ref_a) != 1 or len(alt_a) != 1:
                 skipped_indel += 1
                 continue
@@ -122,28 +161,31 @@ def _convert_file(in_file: Path, out_prefix: Path,
 
             info_aa_val = None
             if info_aa:
-                aa = rec.info.get("AA")
+                aa = var.INFO.get("AA")
                 if isinstance(aa, (list, tuple)):
                     aa = aa[0] if aa else None
                 info_aa_val = str(aa) if aa else None
 
             major, minor, flipped = polarise(
-                ref_a, alt_a, rec.chrom, rec.pos, ancestral, info_aa_val
+                ref_a, alt_a, var.CHROM, var.POS, ancestral, info_aa_val
             )
 
             if transversions_only and is_transition(major, minor):
                 skipped_transition += 1
                 continue
 
-            row = "".join(
-                _genotype_code(rec.samples[s].allele_indices, flipped)
-                for s in samples
-            )
+            # Bulk-encode the genotype row via numpy lookup table. cyvcf2's
+            # gt_types returns the per-sample {0,1,2,3} array in one C call,
+            # so this whole inner step is three numpy ops per record instead
+            # of a 2504-iteration Python loop.
+            gt = var.gt_types
+            codes = (_LOOKUP_FLIPPED if flipped else _LOOKUP_UNFLIPPED)[gt]
+            row = codes.tobytes().decode("ascii")
 
-            if len(row) != len(samples):
+            if len(row) != n_samples:
                 log_warn(
-                    f"{in_file.name}: row-length mismatch at {rec.chrom}:{rec.pos} "
-                    f"({len(row)} vs {len(samples)} samples). Skipping site."
+                    f"{in_file.name}: row-length mismatch at {var.CHROM}:{var.POS} "
+                    f"({len(row)} vs {n_samples} samples). Skipping site."
                 )
                 continue
 
@@ -154,20 +196,21 @@ def _convert_file(in_file: Path, out_prefix: Path,
                 skipped_maf += 1
                 continue
 
-            snp_id = rec.id if rec.id not in (None, ".") else f"{rec.chrom}_{rec.pos}"
-            emitted_chrom = resolve_chrom(rec.chrom, chrom_map, default_chrom)
-            morgans = morgans_for(rec.chrom, rec.pos, gmap)
+            snp_id = var.ID if var.ID not in (None, ".") else f"{var.CHROM}_{var.POS}"
+            emitted_chrom = resolve_chrom(var.CHROM, chrom_map, default_chrom)
+            morgans = morgans_for(var.CHROM, var.POS, gmap)
 
-            snp_rows.append(
-                (snp_id, emitted_chrom, morgans, rec.pos, major, minor)
+            snp_fh.write(
+                f"{snp_id}\t{emitted_chrom}\t{morgans}\t{var.POS}\t{major}\t{minor}\n"
             )
-            geno_rows.append(row)
-            kept += 1
+            geno_fh.write(row + "\n")
 
-        with open(geno_path, "w") as geno_fh, open(snp_path, "w") as snp_fh:
-            for (snp_id, chrom, morgans, bp, major, minor), row in zip(snp_rows, geno_rows):
-                snp_fh.write(f"{snp_id}\t{chrom}\t{morgans}\t{bp}\t{major}\t{minor}\n")
-                geno_fh.write(row + "\n")
+            if also_plink:
+                snp_rows.append(
+                    (snp_id, emitted_chrom, morgans, var.POS, major, minor)
+                )
+                geno_rows.append(row)
+            kept += 1
 
     log_info(
         f"{in_file.name}: {kept} biallelic SNPs written; skipped "
@@ -195,7 +238,14 @@ def batch_convert(input_dir: str, output_dir: str,
                   also_plink: bool = False,
                   force: bool = False,
                   pattern: Optional[str] = None) -> None:
-    if pysam is None:
+    if cyvcf2 is None:
+        raise ImportError(
+            "cyvcf2 is required for vcf_to_eigenstrat. "
+            "Install via `pip install cyvcf2` or `mamba install -c bioconda cyvcf2`."
+        )
+    # pysam is only needed when --ancestral-fasta is supplied (FastaFile lookup
+    # in AncestralProvider). Defer the check until we know we'll need it.
+    if ancestral_fasta is not None and pysam is None:
         require_pysam()
     in_path = Path(input_dir)
     out_path = prepare_output_dir(output_dir, force=force)

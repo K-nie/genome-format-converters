@@ -13,7 +13,7 @@ Seven tasks, chosen to span the tool's feature coverage without being a sales pi
 | T1 | VCF → EIGENSTRAT triplet | `vcf-to-eigenstrat` | convertf (EIGENSOFT), a handwritten `bcftools + awk` script, `pileupCaller` (pseudohap variant). |
 | T2 | VCF → PLINK binary (`.bed`/`.bim`/`.fam`) | `vcf-to-plink` | `plink2 --vcf`, `plink1.9 --vcf --make-bed`. |
 | T3 | FASTA + GFF → GenBank | `fasta-gff-to-gbk` | `EMBOSS seqret`, a handwritten Biopython script, `gff3toembl`. |
-| T4 | GFF3 → GTF | `gff3-to-gtf` | `AGAT agat_sp_gff2gtf.pl`, `gffread`. |
+| T4 | GFF3 → GTF | `gff3-to-gtf` | `AGAT agat_convert_sp_gff2gtf.pl`, `gffread`. |
 | T5 | GFF3 → BED12 | `gff3-to-bed12` | `UCSC gtfToGenePred` + `genePredToBed` chain, `AGAT agat_convert_sp_gff2bed.pl`. |
 | T6 | HMMER `--tblout` → TSV | `hmmer-tblout-to-tsv` | `awk`/`cut` one-liner, `ESL-reformat` (not quite equivalent). |
 | T7 | OrthoFinder `Orthogroups.tsv` → per-OG FASTA | `orthogroups-to-fasta` | Handwritten Python (typical lab script). |
@@ -171,3 +171,24 @@ We **are** claiming:
 2. Python's global interpreter lock means per-file parallelism (`--threads`) is the realistic ceiling; we're not going to out-parallelise `bcftools --threads`.
 3. Windows support is subset-only (pure-Python 20/30 subcommands). Flag this explicitly; don't pretend otherwise.
 4. The `--also-plink` sidecar on EIGENSTRAT is text `.ped` / `.map`; for binary use the standalone `vcf-to-plink`. Reviewers will ask which is "primary"; document that the binary format is canonical and `.ped` is convenience.
+
+---
+
+## Status (2026-04-29)
+
+Stage 1 has shipped. Production benchmark run completed on HTCondor
+cluster job 136866 (10 replicates × 8 tasks × 14 competitors, ~10 hour
+wallclock, sd < 2% on every task). Results, figures, and Methods write-up:
+
+- Manuscript: [`docs/manuscript/gfc_application_note_2026-04-29.md`](manuscript/gfc_application_note_2026-04-29.md)
+  (plain-text mirror at `gfc_application_note_2026-04-29.txt`)
+- Per-task TSVs: `benchmarks/results/raw/T*.tsv` (n=10 replicates each)
+- Headline tables: `benchmarks/results/figures/summary_table.md`,
+  `summary_per_pair.md`
+- Plots (PNG + PDF, 300 dpi): `benchmarks/results/figures/`
+- Per-run notes: `docs/bench-runs/`
+
+Stage 2 / paper-grade extensions (full Y1000+ scale on T3–T5; real
+~10 K-row Pfam-A scan on T6; biallelic-SNP-restricted plink2 baseline
+on T2) are tracked under the manuscript's revision plan rather than
+this planning document.

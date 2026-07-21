@@ -13,8 +13,9 @@ if [[ -f "$vcf" ]]; then
     exit 0
 fi
 
-# URL target (pinned to a stable FTP mirror — update if the upstream moves).
-src="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+# URL target. EBI's 1000G FTP path 404s as of 2026; NCBI mirror still serves
+# the identical phase3 chr22 VCF. Update if the upstream moves again.
+src="https://ftp.ncbi.nlm.nih.gov/1000genomes/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
 
 echo "[get ] $src" >&2
 curl -fSL --retry 3 -o "$vcf" "$src"

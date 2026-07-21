@@ -37,11 +37,16 @@ dependencies = [
     "biopython>=1.78,<2",
     "pandas>=1.0,<3",
     "bcbio-gff>=0.7.0,<1",
+    "numpy>=1.20",
     # pysam wraps htslib; no upstream Windows wheels on PyPI, so we mark it
     # as required only on Linux and macOS. Windows users get the pure-Python
     # subset of subcommands (~20/30) and a clear error if they invoke a
     # VCF/BAM/BCF converter without WSL or a conda-forge pysam build.
     "pysam>=0.16,<1; platform_system != 'Windows'",
+    # cyvcf2 wraps htslib like pysam but exposes bulk genotype access via
+    # numpy, which is the chr22 hot path for vcf_to_eigenstrat. Same
+    # platform constraint as pysam (no upstream Windows wheels).
+    "cyvcf2>=0.30; platform_system != 'Windows'",
 ]
 
 [project.optional-dependencies]

@@ -44,6 +44,33 @@ if [[ -f "$bench_dir/gfc_rep1/tiny.geno" && -f "$bench_dir/gfc_rep2/tiny.geno" ]
     fi
 fi
 
-# TODO: pileupCaller comparison when installed. Note that pileupCaller
-# consumes pileup (from samtools mpileup), not VCF — different input pipe.
+# ---------- handwritten bcftools query + python reference ------------------
+# The conventional "shell glue" approach to pseudohaploid: stream
+# bcftools query | python and randomly pick one of the two GT alleles.
+# benchmarks/refs/t8_bcftools.py is that script.
+ref_script="$repo/benchmarks/refs/t8_bcftools.py"
+if [[ -f "$ref_script" ]] && command -v bcftools >/dev/null 2>&1; then
+    py_version="$(python --version 2>&1 | cut -d' ' -f2)"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/bcftoolsref_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T8" --tool "bcftools-pyref" --version "$py_version" \
+            --replicate "$rep" \
+            --cmd "python '$ref_script' --input-dir '$GFC_BENCH_INPUT_DIR' \
+                   --output-dir '$out_dir' --pattern '$GFC_BENCH_VCF_PATTERN' \
+                   --seed 42" \
+            --notes "handwritten bcftools query + python; seed=42" \
+            >> "$out"
+    done
+else
+    echo "[skip] T8 bcftools-pyref (script or bcftools missing)" >&2
+fi
+
+# Skipped competitor: pileupCaller. Operates on samtools mpileup, not VCF —
+# a fair head-to-head needs a VCF -> pileup feeder pipeline (samtools
+# mpileup against the original BAMs), which the bench harness doesn't
+# stage. Documented for paper discussion; not implemented in Stage 1.
+
 echo "[done] T8 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T8 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T8 correctness check failed (non-fatal)" >&2

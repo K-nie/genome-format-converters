@@ -4,6 +4,45 @@ All notable changes to this project are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Stage 1 benchmark + manuscript
+
+### Added
+- **Stage 1 benchmark suite** (`benchmarks/`) covering 8 head-to-head
+  conversion tasks (T1 VCF→EIGENSTRAT through T8 pseudohaploid) against
+  EIGENSOFT convertf, PLINK 2, PLINK 1.9, AGAT, gffread, UCSC kent
+  tools, EMBOSS seqret, pyhmmer, and handwritten Biopython baselines.
+  HTCondor runner + per-task TSVs + 9 publication-grade plots + 3
+  summary tables. Production run at n=10 reps per (task, tool).
+- **`benchmarks/check_correctness.py`** — per-task format-aware
+  comparators (byte-identical for T1/T6/T7, structural for T3/T4/T5,
+  format-only for T8). Format-divergence cases between gfc and the
+  canonical reference are documented as `_REASON_T*` constants paste-
+  ready into a paper Methods section.
+- **`benchmarks/bench_one.py`** — single-rep timer using `os.wait4` +
+  `getrusage(ru_maxrss)` for per-child wall + peak RSS, with explicit
+  `flush=True` on row writes to prevent mid-shutdown buffer-loss under
+  cluster SIGTERM.
+- **`benchmarks/analyze/`** — collect_results, summary_table (per-task +
+  per-pair), correctness-aware plot_wall_time, plot_memory,
+  plot_correctness_matrix, plot_pareto, plot_speedup, plot_variance,
+  plot_per_task_panels, plot_compute_cost, hardware_table.
+- **VCF converters rewritten on cyvcf2 + numpy bulk encoders**
+  (`vcf_to_eigenstrat`, `vcf_to_plink`, `vcf_to_pseudohaploid`):
+  ~12.3× speedup vs the prior pysam per-sample dict-lookup pattern;
+  peak RSS drops from 3.3 GB to 60 MB on chr22 (1KG biallelic SNPs).
+- **GFF / FASTA converters tightened** (`gff3_to_gtf`, `gff3_to_bed12`,
+  `convert_all_gff_fasta_to_gbk`, `orthogroups_to_fasta`): two-pass
+  streaming text parser replacing bcbio-gff `GFF.parse` on T4/T5; raw
+  FASTA reader replacing biopython on T7.
+- **Application Note manuscript draft** at
+  `docs/manuscript/gfc_application_note_2026-04-29.md` (Q1/Q2 target),
+  with a plain-text mirror `gfc_application_note_2026-04-29.txt` for
+  journal submission portals that don't accept Markdown.
+
+### Changed
+- `pyproject.toml` adds `cyvcf2>=0.30` and `numpy>=1.20` as runtime
+  deps (Linux + macOS).
+
 ## [0.1.5] — 2026-04-24
 
 ### Added

@@ -1,20 +1,37 @@
 #!/usr/bin/env bash
-# Download a 20-species Y1000+ slice (Shen 2018 / Opulente 2024).
-# For the 1154-species full run, set GFC_BENCH_Y1000_FULL=1.
+# Y1000+ data provisioning for the gfc benchmark suite.
 #
-# Target: benchmarks/data/y1000plus/<species>.{fasta,final.gff3}
+# Stage 1 (current): a 20-species tRNA-scan FASTA + GFF slice ships
+# committed in the repo at benchmarks/data/y1000plus/. No download
+# required for T3 / T4 / T5 input.
+#
+# Stage 2 (planned): pull a full-genome 20-species slice from the
+# Shen 2018 / Opulente 2024 figshare deposits for paper-grade T3 numbers.
+# Set GFC_BENCH_Y1000_FULL=1 to opt in once the URLs are pinned. Tracked
+# in project_gfc_bench_figures.md → "Stage 2".
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 dest="$here/y1000plus"
 mkdir -p "$dest"
 
-# TODO: pin the exact figshare / NCBI URLs from the Shen 2018 paper and
-# the Opulente 2024 update. The 20-species slice should be representative
-# across major Saccharomycotina clades (Saccharomyces, Candida, Yarrowia,
-# Lipomyces, Ascoidea, Dipodascaceae, etc.) to avoid clade bias.
-echo "[TODO] populate benchmarks/data/y1000plus/ with 20 species" >&2
-echo "       see benchmarks/data/README.md for dataset provenance"   >&2
+slice_count=$(ls "$dest"/*.fasta 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$slice_count" -ge 20 ]]; then
+    echo "[skip] Y1000+ 20-species slice already present ($slice_count fasta files)"
+    exit 0
+fi
 
-# Placeholder: so downstream scripts don't crash if nothing is there yet.
-[[ -d "$dest" ]] || mkdir -p "$dest"
+cat >&2 <<'EOM'
+[warn] Y1000+ slice missing from benchmarks/data/y1000plus/
+       The slice is committed in the repo and should be present after a
+       fresh clone or rsync of the full repository. If this directory is
+       empty, the slice was either pruned or the .gitignore whitelist for
+       data/y1000plus/*.fasta + *.gff was reverted.
+
+       To restore from a clean checkout:
+         git checkout -- benchmarks/data/y1000plus/
+
+       To pull the Stage 2 full-genome slice (not yet wired):
+         GFC_BENCH_Y1000_FULL=1 bash benchmarks/data/download_y1000plus.sh
+EOM
+exit 0

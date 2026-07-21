@@ -42,7 +42,7 @@ if command -v plink2 >/dev/null 2>&1; then
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "plink2" --version "$plink2_version" \
             --replicate "$rep" \
-            --cmd "plink2 --vcf '$vcf_input' --allow-extra-chr --make-bed \
+            --cmd "plink2 --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
                    --out '$out_dir/$stem' --silent" \
             >> "$out"
     done
@@ -62,7 +62,7 @@ if command -v plink >/dev/null 2>&1 && plink --version 2>&1 | grep -q 'PLINK v1'
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "plink1.9" --version "$plink_version" \
             --replicate "$rep" \
-            --cmd "plink --vcf '$vcf_input' --allow-extra-chr --make-bed \
+            --cmd "plink --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
                    --out '$out_dir/$stem' --silent" \
             >> "$out"
     done
@@ -76,3 +76,4 @@ fi
 # a2, which flips every 00/11 pair. Document the exact conversion rule in the
 # paper rather than asserting byte-identity here.
 echo "[done] T2 rows written to $out" >&2
+python "$repo/benchmarks/check_correctness.py" --task T2 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T2 correctness check failed (non-fatal)" >&2

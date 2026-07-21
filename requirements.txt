@@ -1,4 +1,6 @@
 biopython>=1.78,<2
 pandas>=1.0,<3
 bcbio-gff>=0.7.0,<1
+numpy>=1.20
 pysam>=0.16,<1; platform_system != 'Windows'
+cyvcf2>=0.30; platform_system != 'Windows'

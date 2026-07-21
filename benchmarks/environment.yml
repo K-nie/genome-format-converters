@@ -16,30 +16,48 @@ dependencies:
   # --- gfc runtime deps (let pip install gfc itself) --------------------
   - biopython>=1.78
   - pandas>=1.0
-  - pysam>=0.22
+  - pysam>=0.22         # FastaFile random access (AncestralProvider)
+  - cyvcf2>=0.31        # bulk VCF genotype access; >=0.31 avoids stale py27 builds on bioconda
   - bcbio-gff>=0.7
 
   # --- benchmark harness deps -------------------------------------------
-  - psutil>=5.9            # cross-platform peak-RSS measurement
   - matplotlib>=3.8        # figures 3 + 4
   - seaborn>=0.13          # pretty defaults for the matplotlib plots
   - tabulate>=0.9          # feature matrix Table
 
-  # --- competitors -------------------------------------------------------
+  # --- competitors (VCF / population genetics) --------------------------
   - bcftools=1.19
   - samtools=1.19
   - htslib=1.19
-  - plink2                 # binary .bed/.bim/.fam reference
+  - plink2                 # binary .bed/.bim/.fam reference (T2)
+  - plink=1.90b6.21        # plink 1.9 — still the standard for many pipelines (T2)
+  - eigensoft              # provides convertf (T1 reference) — bioconda 8.0.0+
+
+  # --- competitors (sequence / annotation) ------------------------------
   - seqkit                 # FASTA / FASTQ reference
-  - emboss                 # seqret (FASTA + GFF → GenBank)
-  - ucsc-gtftogenepred     # GTF → BED12 reference (chained with UCSC)
+  - emboss                 # seqret (FASTA + GFF → GenBank, T3)
+  - gffread                # GFF3 → GTF / BED reference (T4, T5)
+  - agat=1.4.0             # Perl, GFF3 ↔ GTF reference (T4) — pinned
+  - ucsc-gtftogenepred     # GTF → BED12 reference chain (T5)
   - ucsc-genepredtobed
-  - hmmer                  # for realistic tblout fixtures
-  - agat                   # Perl, GFF3 ↔ GTF reference
-  # - eigensoft            # convertf — not in bioconda on all arches.
-  #   Install from source into /opt/eigensoft or use a fallback script.
-  # - pileupcaller         # pseudohaploid reference. Install from cabal /
-  #   stack; see docs/BENCHMARK_PLAN.md for instructions.
+  - ucsc-gff3togenepred    # GFF3 directly to BED12 chain (T5)
+
+  # --- competitors (orthology / HMM) ------------------------------------
+  - hmmer                  # tblout generation (T6)
+  - pyhmmer                # in-process baseline for T6
+  - orthofinder            # T7 reference (real, replaces py-ref baseline)
+  - mafft                  # OrthoFinder dependency
+  - diamond                # OrthoFinder dependency
+
+  # --- system / measurement ---------------------------------------------
+  - bedtools=2.31          # T5 sanity / output verification
+  - pigz                   # parallel gzip — fairer compressed-VCF writes
+  - time                   # GNU time on macOS (provides /usr/bin/time -v)
+
+  # NOTE: the following two competitors are NOT in bioconda and require
+  # source builds — handled in benchmarks/Dockerfile (Stage 3):
+  #   - eigensoft / convertf      (T1 reference; clone DReichLab/EIG, make)
+  #   - pileupCaller              (T8 reference; stack install sequenceTools)
 
 # Note: gfc itself is installed via `pip install -e <repo>` as a separate
 # step (see benchmarks/condor/bootstrap.sh) to keep path resolution
