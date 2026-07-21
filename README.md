@@ -36,7 +36,7 @@ directory (or single file), point it at an output directory (or single file
 - **Uniform interface** — every subcommand accepts `--input-dir` / `--output-dir` (batch mode) or `--input` / `--output` (single-file mode, with `-` for stdin/stdout where it makes sense).
 - **Batch processing** — convert every file of a recognised type in a directory in one call. Optional `--pattern GLOB` and `--threads N` for parallel jobs.
 - **Fails loudly** — converters raise on malformed input and exit non-zero so pipelines can detect failure. Progress and warnings go to stderr; data goes to stdout or the output path.
-- **Lightweight** — pure-Python, depends only on Biopython, pysam, bcbio-gff, and pandas.
+- **Lightweight** — pure-Python, depends on Biopython, pysam, cyvcf2, bcbio-gff, numpy, and pandas.
 
 ## Installation
 
