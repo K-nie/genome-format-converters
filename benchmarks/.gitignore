@@ -6,6 +6,7 @@ data/peter2018/*
 data/orthofinder/*
 data/hmmer/*
 data/y1000plus/*
+data/annotations/*
 
 # Stage 1 (bench/stage1-fairness): commit a 20-species Y1000+ tRNA-scan
 # slice (~1.7 MB) as the T3/T4/T5 reference input. Full-genome FASTAs

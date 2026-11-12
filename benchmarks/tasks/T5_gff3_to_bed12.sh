@@ -10,10 +10,14 @@ mkdir -p "$(dirname "$out")"
 
 # Stage 1: prefer the committed Y1000+ tRNA-scan slice when present.
 y1000_dir="$repo/benchmarks/data/y1000plus"
-if compgen -G "$y1000_dir/*.gff3" >/dev/null 2>&1; then
+# An explicit GFC_BENCH_INPUT_DIR (e.g. from run_scaling.sh or a real gene
+# annotation) always wins.
+if [[ -n "${GFC_BENCH_INPUT_DIR:-}" ]]; then
+    :
+elif compgen -G "$y1000_dir/*.gff3" >/dev/null 2>&1; then
     GFC_BENCH_INPUT_DIR="$y1000_dir"
 else
-    GFC_BENCH_INPUT_DIR="${GFC_BENCH_INPUT_DIR:-$repo/tests/test_data}"
+    GFC_BENCH_INPUT_DIR="$repo/tests/test_data"
 fi
 : "${GFC_BENCH_REPLICATES:=5}"
 
