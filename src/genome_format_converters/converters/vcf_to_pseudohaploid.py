@@ -41,6 +41,7 @@ from ._common import (
     strip_compound_suffix,
     load_two_col_map,
 )
+from ._vcf_fast import iter_records
 from ._eigenstrat_common import (
     BASES,
     AncestralProvider,
@@ -82,6 +83,33 @@ def _pseudohaploid_code(alleles, flipped: bool, rng) -> str:
         picked = alleles[int(rng.integers(0, len(alleles)))]
     major_idx = 1 if flipped else 0
     return "2" if picked == major_idx else "0"
+
+
+class _PickBuffer:
+    """Hands out the same {0,1} int32 stream as calling
+    ``rng.integers(0, 2, size=n, dtype=np.int32)`` once per site, but draws
+    it from numpy in blocks of many sites to cut per-call overhead.
+    numpy's Generator yields an identical sequence whether the draws are
+    requested in one call or split across several (checked in the tests).
+    """
+
+    _BLOCK_SITES = 256
+
+    def __init__(self, rng: np.random.Generator, n: int):
+        self._rng = rng
+        self._n = n
+        self._buf = np.empty(0, dtype=np.int32)
+        self._pos = 0
+
+    def take(self, n: int) -> np.ndarray:
+        if self._pos + n > len(self._buf):
+            self._buf = self._rng.integers(
+                0, 2, size=max(n, self._n) * self._BLOCK_SITES, dtype=np.int32
+            )
+            self._pos = 0
+        out = self._buf[self._pos:self._pos + n]
+        self._pos += n
+        return out
 
 
 def _file_seed(base_seed: Optional[int], file_name: str) -> Optional[int]:
@@ -141,8 +169,9 @@ def _convert_file(in_file: Path, out_prefix: Path,
 
         n_samples = len(samples)
         flipped_int = 1  # placeholder, set per record below
+        picks = _PickBuffer(rng, n_samples)
 
-        for var in vcf:
+        for var in iter_records(in_file, vcf):
             if not var.ALT or len(var.ALT) != 1:
                 skipped_multiallelic += 1
                 continue
@@ -178,7 +207,7 @@ def _convert_file(in_file: Path, out_prefix: Path,
             # (0=REF, 1=ALT). Output is '2' when picked==major, '0' otherwise,
             # overridden to '9' for missing.
             gt = var.gt_types
-            random_picks = rng.integers(0, 2, size=n_samples, dtype=np.int32)
+            random_picks = picks.take(n_samples)
             picked = np.where(gt == 1, random_picks,
                               np.where(gt == 3, 1, 0)).astype(np.int32)
             flipped_int = 1 if flipped else 0

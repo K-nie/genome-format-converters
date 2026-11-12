@@ -172,17 +172,25 @@ def passes_maf(allele_codes: Sequence[str], min_maf: float) -> bool:
     """
     if min_maf <= 0:
         return True
-    n_ref = 0
-    n_alt = 0
-    for c in allele_codes:
-        if c == "2":
-            n_ref += 2
-        elif c == "1":
-            n_ref += 1
-            n_alt += 1
-        elif c == "0":
-            n_alt += 2
-        # "9" is missing
+    if isinstance(allele_codes, str):
+        # str.count runs in C; same tallies as the per-character loop below.
+        n2 = allele_codes.count("2")
+        n1 = allele_codes.count("1")
+        n0 = allele_codes.count("0")
+        n_ref = 2 * n2 + n1
+        n_alt = 2 * n0 + n1
+    else:
+        n_ref = 0
+        n_alt = 0
+        for c in allele_codes:
+            if c == "2":
+                n_ref += 2
+            elif c == "1":
+                n_ref += 1
+                n_alt += 1
+            elif c == "0":
+                n_alt += 2
+            # "9" is missing
     total = n_ref + n_alt
     if total == 0:
         return False
@@ -196,7 +204,10 @@ def passes_missing(allele_codes: Sequence[str], max_missing: float) -> bool:
         return True
     if not allele_codes:
         return False
-    miss = sum(1 for c in allele_codes if c == "9")
+    if isinstance(allele_codes, str):
+        miss = allele_codes.count("9")
+    else:
+        miss = sum(1 for c in allele_codes if c == "9")
     return (miss / len(allele_codes)) <= max_missing
 
 
@@ -254,20 +265,55 @@ def write_plink_sidecar(out_prefix: Path,
     with open(map_path, "w") as mfh:
         for snp_id, chrom, morgans, bp, _ref, _alt in snp_rows:
             mfh.write(f"{chrom}\t{snp_id}\t{morgans * 100.0:.6f}\t{bp}\n")
+    # Vectorised transpose: build one (n_snps x n_samples) byte matrix of
+    # EIGENSTRAT codes, then for each sample pick the two allele strings per
+    # SNP with numpy instead of a per-cell Python branch. Output is
+    # identical to the former nested loop.
+    import numpy as np
+
+    n_snps = len(snp_rows)
+    if n_snps:
+        mat = np.frombuffer(
+            "".join(geno_rows).encode("ascii"), dtype=np.uint8
+        ).reshape(n_snps, len(samples))
+        refs = np.array([r[4] for r in snp_rows], dtype=object)
+        alts = np.array([r[5] for r in snp_rows], dtype=object)
+        missing = np.full(n_snps, "0", dtype=object)
+    single_base = n_snps > 0 and all(
+        len(r[4]) == 1 and len(r[5]) == 1 for r in snp_rows
+    )
+    if single_base:
+        # Byte-level path (all SNP alleles are one character, which is the
+        # case for every converter that calls this): fill one
+        # "a1 a2 a1 a2 ..." byte row per sample.
+        ref_b = np.frombuffer("".join(r[4] for r in snp_rows).encode("ascii"),
+                              dtype=np.uint8)
+        alt_b = np.frombuffer("".join(r[5] for r in snp_rows).encode("ascii"),
+                              dtype=np.uint8)
+        zero_b = np.full(n_snps, ord("0"), dtype=np.uint8)
+        line = np.full(4 * n_snps - 1, ord(" "), dtype=np.uint8)
     with open(ped_path, "w") as pfh:
         for s_idx, sample in enumerate(samples):
             fam = pop_map.get(sample, sample)
             sex_raw = sex_map.get(sample, "U")
             sex_col = sex_code.get(sex_raw, "0")
-            row = [fam, sample, "0", "0", sex_col, "-9"]
-            for snp_idx, (_snp_id, _chrom, _m, _bp, ref, alt) in enumerate(snp_rows):
-                code = geno_rows[snp_idx][s_idx]
-                if code == "2":
-                    row += [ref, ref]
-                elif code == "1":
-                    row += [ref, alt]
-                elif code == "0":
-                    row += [alt, alt]
-                else:  # "9"
-                    row += ["0", "0"]
-            pfh.write(" ".join(row) + "\n")
+            head = " ".join([fam, sample, "0", "0", sex_col, "-9"])
+            if not n_snps:
+                pfh.write(head + "\n")
+                continue
+            col = mat[:, s_idx]
+            if single_base:
+                line[0::4] = np.where((col == 50) | (col == 49), ref_b,
+                                      np.where(col == 48, alt_b, zero_b))
+                line[2::4] = np.where(col == 50, ref_b,
+                                      np.where((col == 49) | (col == 48), alt_b, zero_b))
+                pfh.write(head + " " + line.tobytes().decode("ascii") + "\n")
+                continue
+            first = np.where((col == 50) | (col == 49), refs,
+                             np.where(col == 48, alts, missing))
+            second = np.where(col == 50, refs,
+                              np.where((col == 49) | (col == 48), alts, missing))
+            pairs = np.empty(2 * n_snps, dtype=object)
+            pairs[0::2] = first
+            pairs[1::2] = second
+            pfh.write(head + " " + " ".join(pairs.tolist()) + "\n")

@@ -37,6 +37,7 @@ from ._common import (
     strip_compound_suffix,
     load_two_col_map,
 )
+from ._vcf_fast import iter_records
 from ._eigenstrat_common import (
     BASES,
     AncestralProvider,
@@ -190,7 +191,7 @@ def _convert_file(in_file: Path, out_prefix: Path,
         bed_fh.write(_PLINK_MAGIC)
         n_samples = len(samples)
 
-        for var in vcf:
+        for var in iter_records(in_file, vcf):
             if not var.ALT or len(var.ALT) != 1:
                 skipped_multiallelic += 1
                 continue

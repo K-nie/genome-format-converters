@@ -1,0 +1,12 @@
+##fileformat=VCFv4.2
+##contig=<ID=1>
+##INFO=<ID=AA,Number=1,Type=String,Description="Ancestral allele">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Depth">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	a	b	c	d	e	f	g	h	i	j	k
+1	10	.	A	C	.	.	.	GT	0/.	./1	0	1	.	1/0	0|1	./.	.|.	1|1	0/0
+1	20	rs1	G	T	.	.	AA=T	GT	0|0	0|1	1|1	0|0	1|0	./.	0|0	0|0	1|1	0|1	0|0
+1	30	.	G	T	.	.	.	GT:DP	0|0:3	0|1:4	1|1:1	0|0:2	1|0:5	./.:.	0|0:1	0|0:1	1|1:1	0|1:1	0|0:1
+1	40	.	G	T,C	.	.	.	GT	0|0	0|1	1|2	0|0	1|0	./.	0|0	0|0	1|1	0|1	0|0
+1	50	.	GA	T	.	.	.	GT	0|0	0|1	1|1	0|0	1|0	./.	0|0	0|0	1|1	0|1	0|0
+1	60	.	C	T	.	.	.	GT	1/.	./0	1|1	0|0	1|0	./.	0|0	0|0	1|1	0|1	0|0
