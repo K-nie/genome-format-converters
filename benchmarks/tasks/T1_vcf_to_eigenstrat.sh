@@ -76,6 +76,8 @@ done
 #   - On exit 8 / convertf failure, bench_one.py's per-run stderr log
 #     captures the convertf message; this lets us iterate without
 #     re-running the whole 4-min plink2 stage.
+# plink2 reserves a large workspace by default; cap it so RSS reflects work.
+: "${GFC_BENCH_PLINK_MEM_MB:=512}"
 if command -v convertf >/dev/null 2>&1; then
     cf_version="$(conda list eigensoft 2>/dev/null \
         | awk '$1=="eigensoft" {print "v"$2; exit}')"
@@ -96,16 +98,36 @@ if command -v convertf >/dev/null 2>&1; then
         python "$repo/benchmarks/bench_one.py" \
             --task "T1" --tool "convertf" --version "$cf_version" \
             --replicate "$rep" \
-            --cmd "plink2 --vcf '$vcf_input' --threads 1 --allow-extra-chr \
+            --cmd "plink2 --vcf '$vcf_input' --threads 1 --memory $GFC_BENCH_PLINK_MEM_MB --allow-extra-chr \
                           --make-bed --out '$out_dir/$stem' --silent && \
                    printf 'genotypename:    %s.bed\nsnpname:         %s.bim\nindivname:       %s.fam\ninputformat:     PACKEDPED\noutputformat:    EIGENSTRAT\ngenotypeoutname: %s.geno\nsnpoutname:      %s.snp\nindivoutname:    %s.ind\nfamilynames:     NO\nnumchrom:        90\n' \
                           '$out_dir/$stem' '$out_dir/$stem' '$out_dir/$stem' \
                           '$out_dir/$stem' '$out_dir/$stem' '$out_dir/$stem' \
                           > '$out_dir/par.PACKEDPED.EIGENSTRAT' && \
                    convertf -p '$out_dir/par.PACKEDPED.EIGENSTRAT'" \
-            --notes "via plink2 --make-bed (PACKEDPED) → convertf EIGENSTRAT" \
+            --notes "via plink2 --make-bed (PACKEDPED, --memory ${GFC_BENCH_PLINK_MEM_MB} MB) → convertf EIGENSTRAT" \
             >> "$out"
         echo "[T1 trace] after convertf rep $rep: $(wc -l < "$out") lines" >&2
+    done
+    # convertf alone, from a PACKEDPED input built once outside the timer,
+    # so its wall time and RSS are not mixed with plink2's.
+    pre="$bench_dir/convertf_input"
+    mkdir -p "$pre"
+    plink2 --vcf "$vcf_input" --threads 1 --memory "$GFC_BENCH_PLINK_MEM_MB" \
+        --allow-extra-chr --make-bed --out "$pre/$stem" --silent
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/convertfonly_rep${rep}"
+        mkdir -p "$out_dir"
+        printf 'genotypename:    %s.bed\nsnpname:         %s.bim\nindivname:       %s.fam\ninputformat:     PACKEDPED\noutputformat:    EIGENSTRAT\ngenotypeoutname: %s.geno\nsnpoutname:      %s.snp\nindivoutname:    %s.ind\nfamilynames:     NO\nnumchrom:        90\n' \
+            "$pre/$stem" "$pre/$stem" "$pre/$stem" \
+            "$out_dir/$stem" "$out_dir/$stem" "$out_dir/$stem" \
+            > "$out_dir/par.PACKEDPED.EIGENSTRAT"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T1" --tool "convertf-only" --version "$cf_version" \
+            --replicate "$rep" \
+            --cmd "convertf -p '$out_dir/par.PACKEDPED.EIGENSTRAT'" \
+            --notes "convertf from a prebuilt PACKEDPED (plink2 step untimed)" \
+            >> "$out"
     done
 else
     echo "[skip] T1 convertf (EIGENSOFT convertf not on PATH; install eigensoft from bioconda)" >&2

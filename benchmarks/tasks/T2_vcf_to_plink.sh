@@ -29,6 +29,14 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         >> "$out"
 done
 
+# plink 1.9/2 reserve a large workspace up front (plink2 takes half of
+# system RAM by default, capped near ~1.3 GB on our slots), so peak RSS
+# measures the allocator, not the work. We cap it with --memory
+# (GFC_BENCH_PLINK_MEM_MB, default 512) so RSS is comparable across tools.
+# Set GFC_BENCH_PLINK_DEFAULT_MEM=1 to also record uncapped rows.
+: "${GFC_BENCH_PLINK_MEM_MB:=512}"
+: "${GFC_BENCH_PLINK_DEFAULT_MEM:=0}"
+
 # ---------- plink2 ----------------------------------------------------------
 if command -v plink2 >/dev/null 2>&1; then
     plink2_version="$(plink2 --version 2>&1 | head -1 | tr -s ' ' | cut -d' ' -f2)"
@@ -42,9 +50,20 @@ if command -v plink2 >/dev/null 2>&1; then
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "plink2" --version "$plink2_version" \
             --replicate "$rep" \
-            --cmd "plink2 --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
-                   --out '$out_dir/$stem' --silent" \
+            --cmd "plink2 --vcf '$vcf_input' --threads 1 --memory $GFC_BENCH_PLINK_MEM_MB \
+                   --allow-extra-chr --make-bed --out '$out_dir/$stem' --silent" \
+            --notes "--memory ${GFC_BENCH_PLINK_MEM_MB} MB" \
             >> "$out"
+        if [[ "$GFC_BENCH_PLINK_DEFAULT_MEM" == "1" ]]; then
+            mkdir -p "${out_dir}_defmem"
+            python "$repo/benchmarks/bench_one.py" \
+                --task "T2" --tool "plink2-default-mem" --version "$plink2_version" \
+                --replicate "$rep" \
+                --cmd "plink2 --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
+                       --out '${out_dir}_defmem/$stem' --silent" \
+                --notes "default --memory reservation" \
+                >> "$out"
+        fi
     done
 else
     echo "[skip] T2 plink2 (plink2 not on PATH)" >&2
@@ -62,9 +81,20 @@ if command -v plink >/dev/null 2>&1 && plink --version 2>&1 | grep -q 'PLINK v1'
         python "$repo/benchmarks/bench_one.py" \
             --task "T2" --tool "plink1.9" --version "$plink_version" \
             --replicate "$rep" \
-            --cmd "plink --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
-                   --out '$out_dir/$stem' --silent" \
+            --cmd "plink --vcf '$vcf_input' --threads 1 --memory $GFC_BENCH_PLINK_MEM_MB \
+                   --allow-extra-chr --make-bed --out '$out_dir/$stem' --silent" \
+            --notes "--memory ${GFC_BENCH_PLINK_MEM_MB} MB" \
             >> "$out"
+        if [[ "$GFC_BENCH_PLINK_DEFAULT_MEM" == "1" ]]; then
+            mkdir -p "${out_dir}_defmem"
+            python "$repo/benchmarks/bench_one.py" \
+                --task "T2" --tool "plink1.9-default-mem" --version "$plink_version" \
+                --replicate "$rep" \
+                --cmd "plink --vcf '$vcf_input' --threads 1 --allow-extra-chr --make-bed \
+                       --out '${out_dir}_defmem/$stem' --silent" \
+                --notes "default --memory reservation" \
+                >> "$out"
+        fi
     done
 else
     echo "[skip] T2 plink1.9 (plink v1 not on PATH)" >&2
