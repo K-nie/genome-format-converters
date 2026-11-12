@@ -179,3 +179,19 @@ Knobs (set in the environment before `condor_submit`, which passes
 
 AGAT on GRCh38 chr22 x25 is the slowest cell. If the scaling job runs past the
 cluster's wall-time limit, lower `GFC_SCALE_FACTORS` to `1 5 10`.
+
+### Figures and tables
+
+Each phase job ends by rendering a preview into
+`benchmarks/results/<phase>/paper_preview/` from all phases finished so far.
+The final set is built from the copied-back tarballs with the same script:
+
+```
+python benchmarks/analyze/paper_figures.py --results <dir with *.tar.gz>
+```
+
+It writes `paper/figures/*.pdf|png` (runtime and memory, scaling, four-state
+correctness, real-annotation panels), `paper/tables/*.tsv` (median and 95%
+bootstrap CI per cell, competitor/gfc ratios, verdicts, T8 reproducibility,
+start-up cost, install footprint, cold vs warm) and `paper/summary.md`.
+Missing phases are skipped, so it can be run as results arrive.

@@ -133,6 +133,11 @@ case "$phase" in
         echo "[err ] unknown phase $phase" >&2; exit 2 ;;
 esac
 
+# Render a preview of the paper figures and tables from every phase finished
+# so far (the final set is rebuilt from all tarballs with the same script).
+python "$bench/analyze/paper_figures.py" --results "$bench/results" \
+    --out "$dest/paper_preview" || echo "[warn] figure rendering failed" >&2
+
 stamp="$(date +%Y%m%d-%H%M%S)"
 tar czf "$bench/results/${phase}.${stamp}.tar.gz" -C "$bench/results" "$phase"
 echo "[done] $phase -> benchmarks/results/${phase}.${stamp}.tar.gz" >&2

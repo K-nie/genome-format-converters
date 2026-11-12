@@ -57,3 +57,11 @@ def test_populate_writes_four_state_sidecar(tmp_path):
     gfc_row = next(r for r in side if r["tool"] == "gfc")
     assert gfc_row["state"] == fs.STRUCTURAL
     assert gfc_row["reason"] == "chrom-label"
+
+
+def test_populate_sidecar_names_conventions_and_reference(tmp_path):
+    test_populate_writes_four_state_sidecar(tmp_path)
+    side = list(csv.DictReader((tmp_path / "T1.verdicts.tsv").open(), delimiter="\t"))
+    by_tool = {r["tool"]: r for r in side}
+    assert by_tool["gfc"]["conventions"] == "chrom-label"
+    assert by_tool["convertf"]["state"] == "reference"

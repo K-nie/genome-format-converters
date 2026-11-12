@@ -582,7 +582,7 @@ def populate(task: str, bench_dir: Path, tsv_path: Path,
 
     comparator = fs.COMPARATORS[task]
     verdict_per_tool: dict[str, str] = {}
-    sidecar: list[list[str]] = [["task", "tool", "reference", "state", "reason"]]
+    sidecar: list[list[str]] = [["task", "tool", "reference", "state", "conventions", "reason"]]
     summary_bits: list[str] = []
     distinct_tools = sorted({r[ix_tool] for r in rows[1:]})
     for tool in distinct_tools:
@@ -594,15 +594,20 @@ def populate(task: str, bench_dir: Path, tsv_path: Path,
                 v = fs.compare_t8(tool_dir, None, input_vcf=input_vcf)
             ref_name = "input VCF"
         elif tool == ref_tool:
-            v = fs.Verdict(fs.BYTE, "reference")
-            ref_name = ref_tool
+            # The reference is not judged against itself; the sidecar marks
+            # it "reference" so figures don't show it as byte-identical.
+            verdict_per_tool[tool] = "1"  # unchanged TSV encoding
+            sidecar.append([task, tool, ref_tool, "reference", "", "reference tool"])
+            summary_bits.append(f"{tool}=reference")
+            continue
         else:
             tool_dir = gfc_dir if tool == "gfc" else _rep1_dir(bench_dir, task, tool)
             v = (comparator(tool_dir, ref_dir) if tool_dir is not None
                  else fs.Verdict(fs.LIMITATION, "no rep1 output"))
             ref_name = ref_tool
         verdict_per_tool[tool] = v.correct_flag
-        sidecar.append([task, tool, ref_name or "", v.state, v.reason])
+        sidecar.append([task, tool, ref_name or "", v.state,
+                        ", ".join(v.conventions), v.reason])
         summary_bits.append(f"{tool}={v.state}")
 
     with tsv_path.with_suffix(".verdicts.tsv").open("w", newline="") as fh:
