@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # T8 — Pseudohaploid VCF → EIGENSTRAT with reproducibility contract.
-# Competitor: pileupCaller (Haskell). Highlights: per-file seeded RNG in
-# gfc means two runs on the same file with --seed give identical output
-# regardless of file order.
+# No timing competitor (see below). Highlights: per-file seeded RNG means
+# two runs on the same file with --seed give identical output regardless
+# of file order or --threads.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,44 +33,21 @@ for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
         >> "$out"
 done
 
-# Reproducibility assertion: same seed → identical .geno across replicates.
-# This is the honest selling point for T8 — not speed.
-if [[ -f "$bench_dir/gfc_rep1/tiny.geno" && -f "$bench_dir/gfc_rep2/tiny.geno" ]]; then
-    if diff -q "$bench_dir/gfc_rep1/tiny.geno" "$bench_dir/gfc_rep2/tiny.geno" >/dev/null; then
-        echo "[ok  ] T8 reproducibility: rep1 .geno == rep2 .geno with --seed 42" >&2
-    else
-        echo "[FAIL] T8 reproducibility broken — rep1 != rep2 with same seed" >&2
-        exit 1
-    fi
-fi
-
-# ---------- handwritten bcftools query + python reference ------------------
-# The conventional "shell glue" approach to pseudohaploid: stream
-# bcftools query | python and randomly pick one of the two GT alleles.
-# benchmarks/refs/t8_bcftools.py is that script.
-ref_script="$repo/benchmarks/refs/t8_bcftools.py"
-if [[ -f "$ref_script" ]] && command -v bcftools >/dev/null 2>&1; then
-    py_version="$(python --version 2>&1 | cut -d' ' -f2)"
-    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
-        out_dir="$bench_dir/bcftoolsref_rep${rep}"
-        mkdir -p "$out_dir"
-        python "$repo/benchmarks/bench_one.py" \
-            --task "T8" --tool "bcftools-pyref" --version "$py_version" \
-            --replicate "$rep" \
-            --cmd "python '$ref_script' --input-dir '$GFC_BENCH_INPUT_DIR' \
-                   --output-dir '$out_dir' --pattern '$GFC_BENCH_VCF_PATTERN' \
-                   --seed 42" \
-            --notes "handwritten bcftools query + python; seed=42" \
-            >> "$out"
-    done
+# T8 is reported as a correctness and reproducibility task, not a speed
+# race: no published tool converts VCF to pseudohaploid EIGENSTRAT directly
+# (ANGSD --doHaploCall and pileupCaller both read BAM/pileup), so any timing
+# competitor would be doing different work. The earlier handwritten
+# bcftools-query + Python baseline is no longer run.
+input_vcf="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN | head -1)"
+repro_out="$repo/benchmarks/results/raw/${task}.reproducibility.tsv"
+if python "$repo/benchmarks/t8_reproducibility.py" --vcf "$input_vcf" \
+        --work "$bench_dir/repro" --copies "${GFC_BENCH_T8_COPIES:-4}" \
+        --threads "${GFC_BENCH_THREADS:-4}" --out "$repro_out"; then
+    echo "[ok  ] T8 reproducibility checks passed ($repro_out)" >&2
 else
-    echo "[skip] T8 bcftools-pyref (script or bcftools missing)" >&2
+    echo "[FAIL] T8 reproducibility check failed; see $repro_out" >&2
+    exit 1
 fi
-
-# Skipped competitor: pileupCaller. Operates on samtools mpileup, not VCF —
-# a fair head-to-head needs a VCF -> pileup feeder pipeline (samtools
-# mpileup against the original BAMs), which the bench harness doesn't
-# stage. Documented for paper discussion; not implemented in Stage 1.
 
 echo "[done] T8 rows written to $out" >&2
-python "$repo/benchmarks/check_correctness.py" --task T8 --bench-dir "$bench_dir" --tsv "$out" --input-vcf "$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN | head -1)" 2>&1 | head -20 || echo "[warn] T8 correctness check failed (non-fatal)" >&2
+python "$repo/benchmarks/check_correctness.py" --task T8 --bench-dir "$bench_dir" --tsv "$out" --input-vcf "$input_vcf" 2>&1 | head -20 || echo "[warn] T8 correctness check failed (non-fatal)" >&2
