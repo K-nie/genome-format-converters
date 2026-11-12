@@ -96,6 +96,16 @@ EXAMPLES: Dict[str, List[str]] = {
     "vcf-to-bed": [
         "gfc vcf-to-bed --input-dir ./vcf --output-dir ./bed",
     ],
+    "eigenstrat-to-vcf": [
+        "gfc eigenstrat-to-vcf --input-dir ./eig --output-dir ./vcf",
+        "gfc eigenstrat-to-vcf --input-dir ./eig --output-dir ./vcf --haploid "
+        "--ref-fasta genome.fa",
+    ],
+    "vcf-to-snp-alignment": [
+        "gfc vcf-to-snp-alignment --input-dir ./vcf --output-dir ./aln",
+        "gfc vcf-to-snp-alignment --input-dir ./vcf --output-dir ./aln "
+        "--format fasta --min-samples 10 --drop-invariant",
+    ],
     "vcf-to-table": [
         "gfc vcf-to-table --input-dir ./vcf --output-dir ./tsv",
     ],
@@ -145,7 +155,8 @@ CATEGORIES: List[tuple] = [
       "hmmer-tblout-to-tsv", "orthogroups-to-fasta"]),
     ("Variant formats (VCF / EIGENSTRAT / PLINK)",
      ["vcf-to-bed", "vcf-to-table", "vcf-to-consensus",
-      "vcf-to-eigenstrat", "vcf-to-pseudohaploid", "vcf-to-plink"]),
+      "vcf-to-eigenstrat", "vcf-to-pseudohaploid", "vcf-to-plink",
+      "eigenstrat-to-vcf", "vcf-to-snp-alignment"]),
     ("Phylogenetic trees",
      ["tree-convert", "annotate-tree"]),
 ]
@@ -181,6 +192,8 @@ SUMMARIES: Dict[str, str] = {
     "vcf-to-eigenstrat": "VCF → EIGENSTRAT triplet (.geno/.snp/.ind)",
     "vcf-to-pseudohaploid": "VCF → pseudohaploid EIGENSTRAT (random allele per het)",
     "vcf-to-plink": "VCF → PLINK binary (.bed/.bim/.fam)",
+    "eigenstrat-to-vcf": "EIGENSTRAT triplet → VCF (diploid or --haploid)",
+    "vcf-to-snp-alignment": "VCF → SNP alignment (PHYLIP / FASTA / NEXUS, IUPAC hets)",
     "tree-convert": "Newick ↔ NEXUS ↔ PhyloXML",
     "annotate-tree": "Tree + alignment → annotated NEXUS",
 }

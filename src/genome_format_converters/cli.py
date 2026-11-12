@@ -53,6 +53,8 @@ from genome_format_converters.converters import (
     vcf_to_eigenstrat,
     vcf_to_pseudohaploid,
     vcf_to_plink,
+    vcf_to_snp_alignment,
+    eigenstrat_to_vcf,
     tree_convert,
     annotate_tree,
     convert_all_gff_fasta_to_gbk,
@@ -419,6 +421,33 @@ def main():
                               help="Convert VCF to PLINK binary (.bed/.bim/.fam)")
     _add_io_args(p, single_file=False); _add_batch_flags(p); _add_eigenstrat_flags(p)
 
+    p = subparsers.add_parser("vcf-to-snp-alignment",
+                              help="Convert VCF to a SNP alignment (PHYLIP/FASTA/NEXUS)")
+    _add_io_args(p, single_file=False); _add_batch_flags(p)
+    g = p.add_argument_group("alignment options")
+    g.add_argument("--format", dest="aln_format", default="phylip",
+                   choices=["phylip", "fasta", "nexus"],
+                   help="Output format (default: relaxed PHYLIP).")
+    g.add_argument("--het", default="iupac", choices=["iupac", "random", "missing"],
+                   help="Heterozygous calls: IUPAC code (default), one random "
+                        "allele (seeded per file), or N.")
+    g.add_argument("--min-samples", type=int, default=0,
+                   help="Drop sites called in fewer than this many samples.")
+    g.add_argument("--drop-invariant", action="store_true",
+                   help="Drop columns where all called samples share one base.")
+    g.add_argument("--seed", type=int, default=None,
+                   help="Seed for --het random.")
+
+    p = subparsers.add_parser("eigenstrat-to-vcf",
+                              help="Convert EIGENSTRAT (.geno/.snp/.ind) back to VCF")
+    _add_io_args(p, single_file=False); _add_batch_flags(p)
+    g = p.add_argument_group("EIGENSTRAT options")
+    g.add_argument("--haploid", action="store_true",
+                   help="Write haploid calls (for pseudohaploid data).")
+    g.add_argument("--ref-fasta", default=None,
+                   help="Reference FASTA (indexed); re-orients alleles so "
+                        "REF matches the genome.")
+
     # ---- phylogenetic trees --------------------------------------------
 
     p = subparsers.add_parser("tree-convert",
@@ -607,6 +636,13 @@ def main():
             transversions_only=args.transversions_only,
             min_maf=args.min_maf, max_missing=args.max_missing,
             strict_maps=args.strict_maps,
+            force=args.force, pattern=pattern),
+        "vcf-to-snp-alignment": lambda: vcf_to_snp_alignment.batch_convert(
+            in_dir, out_dir, out_format=args.aln_format, het=args.het,
+            min_samples=args.min_samples, drop_invariant=args.drop_invariant,
+            seed=args.seed, force=args.force, pattern=pattern),
+        "eigenstrat-to-vcf":  lambda: eigenstrat_to_vcf.batch_convert(
+            in_dir, out_dir, haploid=args.haploid, ref_fasta=args.ref_fasta,
             force=args.force, pattern=pattern),
         "tree-convert":       lambda: tree_convert.batch_convert(
             in_dir, out_dir, args.in_format, args.out_format,

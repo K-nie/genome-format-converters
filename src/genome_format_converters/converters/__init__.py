@@ -28,6 +28,8 @@ from . import (
     vcf_to_eigenstrat,
     vcf_to_pseudohaploid,
     vcf_to_plink,
+    vcf_to_snp_alignment,
+    eigenstrat_to_vcf,
     tree_convert,
     annotate_tree,
     convert_all_gff_fasta_to_gbk,

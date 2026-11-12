@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — paper-plan engineering pass
+
+### Added
+- **`eigenstrat-to-vcf`**: EIGENSTRAT triplet back to VCF, diploid or
+  `--haploid` (pseudohaploid), with optional `--ref-fasta` re-orientation.
+  Rejects packed ANCESTRYMAP/TGENO input with a clear message.
+- **`vcf-to-snp-alignment`**: VCF to relaxed PHYLIP / FASTA / NEXUS SNP
+  alignment, IUPAC (default), random or missing coding of hets,
+  `--min-samples`, `--drop-invariant`.
+- **Four-state correctness comparators** (`benchmarks/four_state.py`):
+  byte / structural / limitation / disagreement, with the tolerated
+  convention recorded per verdict. `check_correctness.py` writes them to
+  `<task>.verdicts.tsv`; T8 is now checked against its input VCF.
+- **Mutation test** (`benchmarks/mutation_test.py`): 29 seeded defects
+  across T1-T8 are all reported as `disagreement`; convention rewrites
+  stay `structural`.
+
+### Changed
+- **VCF converters** (`vcf-to-eigenstrat`, `vcf-to-plink`,
+  `vcf-to-pseudohaploid`) read GT-only VCF text with a numpy decoder and
+  fall back to cyvcf2 for anything irregular; MAF/missingness filters and
+  the PLINK `.ped` sidecar are vectorised. Output is byte-identical to
+  before; 2-4x faster on a 20k-site x 2,504-sample test file.
+- **`--threads N`** now runs batch conversions in parallel worker
+  processes (previously it only printed a warning). Output is identical
+  to a sequential run.
+
 ## [Unreleased] — Stage 1 benchmark + manuscript
 
 ### Added
