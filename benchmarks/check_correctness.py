@@ -68,6 +68,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Callable, Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 
 # Map TSV `tool` column values to the per-rep directory prefix used by
 # the task harness scripts. Multiple TSV names can map to the same
@@ -525,7 +527,8 @@ _CHECKERS: dict[str, Callable[[Path, Path], str]] = {
 }
 
 
-def populate(task: str, bench_dir: Path, tsv_path: Path) -> str:
+def populate(task: str, bench_dir: Path, tsv_path: Path,
+             input_vcf: Optional[Path] = None) -> str:
     """Read tsv_path, fill in `correct` for each row, write back. Return
     a one-line summary suitable for piping into `head -20`."""
     if task not in _CHECKERS:
@@ -569,30 +572,40 @@ def populate(task: str, bench_dir: Path, tsv_path: Path) -> str:
         return (f"[corr {task}] reference '{ref_tool}' rep1 missing under "
                 f"{bench_dir}; all rows blank")
 
-    # Compute the per-tool verdict on rep1, then propagate to every rep.
-    # The reference tool's own row gets "1" by definition (it IS the
-    # ground truth for this comparison axis). T8 sets "skip" for the
-    # bcftools-pyref reference because cross-RNG byte equivalence is
-    # explicitly out of scope.
-    checker = _CHECKERS[task]
+    # Compute the per-tool four-state verdict on rep1 (see four_state.py),
+    # then propagate to every rep. The `correct` column keeps its old
+    # encoding for the plotting scripts ("1" = byte or structural, "0" =
+    # disagreement, "" = limitation / unchecked); the full state and the
+    # convention that was tolerated go to a sidecar <tsv>.verdicts.tsv.
+    import four_state as fs
+
+    comparator = fs.COMPARATORS[task]
     verdict_per_tool: dict[str, str] = {}
+    sidecar: list[list[str]] = [["task", "tool", "reference", "state", "reason"]]
     summary_bits: list[str] = []
     distinct_tools = sorted({r[ix_tool] for r in rows[1:]})
     for tool in distinct_tools:
-        if tool == "gfc":
-            if task == "T8":
-                v = checker(gfc_dir, gfc_dir)
+        if task == "T8":
+            tool_dir = gfc_dir if tool == "gfc" else _rep1_dir(bench_dir, task, tool)
+            if tool_dir is None:
+                v = fs.Verdict(fs.LIMITATION, "no rep1 output")
             else:
-                v = checker(gfc_dir, ref_dir)
-        elif tool == ref_tool and task != "T8":
-            v = "1"  # reference is correct by construction
-        elif task == "T8":
-            v = "skip"  # any non-gfc tool in T8: cross-RNG check, not applicable
+                v = fs.compare_t8(tool_dir, None, input_vcf=input_vcf)
+            ref_name = "input VCF"
+        elif tool == ref_tool:
+            v = fs.Verdict(fs.BYTE, "reference")
+            ref_name = ref_tool
         else:
-            tool_dir = _rep1_dir(bench_dir, task, tool)
-            v = checker(tool_dir, ref_dir) if tool_dir is not None else ""
-        verdict_per_tool[tool] = v
-        summary_bits.append(f"{tool}={v or 'blank'}")
+            tool_dir = gfc_dir if tool == "gfc" else _rep1_dir(bench_dir, task, tool)
+            v = (comparator(tool_dir, ref_dir) if tool_dir is not None
+                 else fs.Verdict(fs.LIMITATION, "no rep1 output"))
+            ref_name = ref_tool
+        verdict_per_tool[tool] = v.correct_flag
+        sidecar.append([task, tool, ref_name or "", v.state, v.reason])
+        summary_bits.append(f"{tool}={v.state}")
+
+    with tsv_path.with_suffix(".verdicts.tsv").open("w", newline="") as fh:
+        csv.writer(fh, delimiter="\t").writerows(sidecar)
 
     for r in rows[1:]:
         r[ix_correct] = verdict_per_tool.get(r[ix_tool], "")
@@ -636,8 +649,12 @@ def main() -> None:
                          "<tool>_rep<n>/ subdirs.")
     ap.add_argument("--tsv", required=True,
                     help="Per-task results TSV to update in place.")
+    ap.add_argument("--input-vcf",
+                    help="T8 only: the input VCF, for the pseudohaploid "
+                         "consistency check.")
     args = ap.parse_args()
-    msg = populate(args.task, Path(args.bench_dir), Path(args.tsv))
+    msg = populate(args.task, Path(args.bench_dir), Path(args.tsv),
+                   Path(args.input_vcf) if args.input_vcf else None)
     print(msg)
 
 
