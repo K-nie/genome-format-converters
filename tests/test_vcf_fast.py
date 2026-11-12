@@ -66,3 +66,23 @@ def test_pick_buffer_matches_per_site_draws(n):
     buf = _PickBuffer(np.random.default_rng(42), n)
     got = np.concatenate([buf.take(n).copy() for _ in range(600)])
     np.testing.assert_array_equal(got, expected)
+
+
+def test_threads_output_matches_sequential(tmp_path):
+    import subprocess
+    import sys
+
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    for i in range(3):
+        shutil.copy(DATA / "gt_edge_cases.vcf", in_dir / f"part{i}.vcf")
+    outs = {}
+    for t in (1, 3):
+        out = tmp_path / f"out{t}"
+        subprocess.run([sys.executable, "-m", "genome_format_converters.cli",
+                        "vcf-to-pseudohaploid", "--input-dir", str(in_dir),
+                        "--output-dir", str(out), "--seed", "5", "--threads", str(t)],
+                       check=True, capture_output=True)
+        outs[t] = {p.name: p.read_bytes() for p in out.iterdir()}
+    assert outs[1] == outs[3]
+    assert len(outs[3]) == 9

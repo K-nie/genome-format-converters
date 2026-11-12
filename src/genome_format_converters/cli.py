@@ -106,7 +106,8 @@ def _add_batch_flags(sub) -> None:
                    help="List what would be converted without writing output.")
     g.add_argument("--threads", type=int, default=1,
                    help="Number of parallel worker processes for batch mode "
-                        "(default 1). Only affects 1:1 converters.")
+                        "(default 1). Files are converted independently, so "
+                        "output is identical to a sequential run.")
 
 
 def _add_eigenstrat_flags(sub) -> None:
@@ -192,6 +193,59 @@ def _single_file_batch_wrapper(input_path: str, output_path: str):
 
 
 # ---------- main -------------------------------------------------------------
+
+# Commands whose batch mode is not one-output-per-input-file.
+_NO_FANOUT = {"fasta-gff-to-gbk"}
+
+
+def _strip_flags(argv, flags_with_value, bare_flags):
+    out, skip = [], False
+    for tok in argv:
+        if skip:
+            skip = False
+            continue
+        name = tok.split("=", 1)[0]
+        if name in flags_with_value:
+            skip = "=" not in tok
+            continue
+        if name in bare_flags:
+            continue
+        out.append(tok)
+    return out
+
+
+def _run_parallel(args, in_dir, out_dir, pattern, threads: int) -> None:
+    """Run one worker process per input file, at most `threads` at a time."""
+    import glob as _glob
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
+
+    from genome_format_converters.converters._common import prepare_output_dir
+
+    in_path = Path(in_dir)
+    files = sorted(in_path.glob(pattern) if pattern else in_path.iterdir())
+    files = [f for f in files if f.is_file()]
+    # Validate/create the output dir once, before workers start.
+    prepare_output_dir(str(out_dir), force=args.force)
+    if len(files) <= 1:
+        argv = _strip_flags(sys.argv[1:], {"--threads"}, set())
+        sys.exit(subprocess.call([sys.executable, "-m", "genome_format_converters.cli",
+                                  *argv, "--threads", "1"]))
+    base = _strip_flags(sys.argv[1:], {"--threads", "--pattern"}, {"--force"})
+
+    def work(f: Path) -> int:
+        cmd = [sys.executable, "-m", "genome_format_converters.cli", *base,
+               "--pattern", _glob.escape(f.name), "--threads", "1", "--force"]
+        return subprocess.call(cmd)
+
+    with ThreadPoolExecutor(max_workers=threads) as pool:
+        codes = list(pool.map(work, files))
+    failed = [f.name for f, c in zip(files, codes) if c != 0]
+    if failed:
+        print(f"[error] {len(failed)} of {len(files)} files failed: "
+              + ", ".join(failed[:5]), file=sys.stderr)
+        sys.exit(1)
+
 
 def main():
     prog_description = (
@@ -565,14 +619,14 @@ def main():
         print(f"[error] Unknown command: {args.command}", file=sys.stderr)
         sys.exit(2)
 
-    # --threads: where supported, batch_convert itself parallelises. For now
-    # we accept the flag and warn when the converter hasn't been parallelised.
-    if getattr(args, "threads", 1) > 1:
-        print(
-            f"[warn] --threads {args.threads} requested, but per-file parallelism "
-            "is not yet wired through every converter. Running sequentially.",
-            file=sys.stderr,
-        )
+    # --threads N (batch mode): fan the input files out over N worker
+    # processes, each running this same CLI on one file. Every converter
+    # handles its files independently (pseudohaploid seeds are per file),
+    # so the outputs are identical to a sequential run.
+    threads = getattr(args, "threads", 1) or 1
+    if threads > 1 and rename_after is None and args.command not in _NO_FANOUT:
+        _run_parallel(args, in_dir, out_dir, pattern, threads)
+        return
 
     dispatch_table[args.command]()
 
