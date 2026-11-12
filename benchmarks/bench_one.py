@@ -27,6 +27,33 @@ import sys
 import time
 
 
+def evict_page_cache(dirs: str) -> int:
+    """Drop cached pages of every file under the colon-separated `dirs`.
+
+    Uses posix_fadvise(DONTNEED), which needs no root (unlike writing to
+    /proc/sys/vm/drop_caches) and only affects the named files. Used for
+    the cold-cache supplementary run: set GFC_BENCH_EVICT_DIRS to the input
+    data directories. Returns the number of files advised.
+    """
+    if not hasattr(os, "posix_fadvise"):
+        return 0
+    n = 0
+    for d in filter(None, dirs.split(":")):
+        for root, _dirs, files in os.walk(d):
+            for name in files:
+                path = os.path.join(root, name)
+                try:
+                    fd = os.open(path, os.O_RDONLY)
+                except OSError:
+                    continue
+                try:
+                    os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+                    n += 1
+                finally:
+                    os.close(fd)
+    return n
+
+
 def run_once(cmd: str, *, task: str, tool: str,
              replicate: int) -> tuple[float, int, int]:
     """Run `cmd` under a shell. Return (wall_seconds, peak_rss_bytes, exit_code).
@@ -50,6 +77,9 @@ def run_once(cmd: str, *, task: str, tool: str,
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, f"{task}_{tool}_rep{replicate}.err")
 
+    evict = os.environ.get("GFC_BENCH_EVICT_DIRS")
+    if evict:
+        evict_page_cache(evict)
     start = time.perf_counter()
     with open(log_path, "wb") as err_log:
         # shell=True so the command string can use pipes / redirects when

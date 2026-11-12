@@ -6,6 +6,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] — paper-plan engineering pass
 
+### Changed
+- **Lazy converter imports.** The CLI imports a converter module only when
+  its subcommand runs, and `converters/__init__.py` no longer imports every
+  submodule. `gfc --help` and the annotation/HMMER commands no longer load
+  Biopython, BCBio.GFF, pandas, numpy, pysam or cyvcf2 (CLI start-up peak
+  RSS 55 MB -> 19 MB locally). `benchmarks/bench_import.py` measures it.
+
+### Benchmarks
+- T8 is now a reproducibility and correctness task
+  (`benchmarks/t8_reproducibility.py`); the handwritten bcftools baseline is
+  gone. plink runs with a capped `--memory`; T1 adds convertf-only rows.
+- Size-scaling series (`run_scaling.sh`, `make_scaled_inputs.py`), Ensembl
+  gene annotations for T4/T5, cold-cache mode (`GFC_BENCH_EVICT_DIRS`),
+  install-footprint measurement (`install_footprint.sh`), and a per-phase
+  HTCondor rerun (`condor/paper_rerun.sub`).
+
 ### Added
 - **`eigenstrat-to-vcf`**: EIGENSTRAT triplet back to VCF, diploid or
   `--haploid` (pseudohaploid), with optional `--ref-fasta` re-orientation.

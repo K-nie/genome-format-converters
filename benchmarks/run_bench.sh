@@ -37,7 +37,7 @@ if [[ $# -gt 0 ]]; then
     tasks=("${selected[@]}")
 fi
 
-mkdir -p benchmarks/results/raw benchmarks/results/figures
+mkdir -p "${GFC_BENCH_RAW_DIR:-benchmarks/results/raw}" benchmarks/results/figures
 
 for task in "${tasks[@]}"; do
     script="benchmarks/tasks/${task}.sh"
@@ -50,4 +50,4 @@ for task in "${tasks[@]}"; do
 done
 
 python benchmarks/analyze/collect_results.py
-echo "[done] results merged at benchmarks/results/raw/all.tsv" >&2
+echo "[done] results merged at ${GFC_BENCH_RAW_DIR:-benchmarks/results/raw}/all.tsv" >&2

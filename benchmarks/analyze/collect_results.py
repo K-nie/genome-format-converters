@@ -4,13 +4,18 @@
 Run after ``run_bench.sh``. Figures (`plot_wall_time.py`,
 `plot_memory.py`) read from `all.tsv`.
 """
+import os
 from pathlib import Path
 import sys
 
-RAW = Path(__file__).resolve().parent.parent / "results" / "raw"
+RAW = Path(os.environ.get("GFC_BENCH_RAW_DIR")
+           or Path(__file__).resolve().parent.parent / "results" / "raw")
 
 def main() -> int:
-    files = sorted(RAW.glob("T*.tsv"))
+    # Only the per-task timing TSVs (T1_vcf_to_eigenstrat.tsv, ...); skip
+    # sidecars such as T1_*.verdicts.tsv and T8_*.reproducibility.tsv,
+    # which have different columns.
+    files = sorted(f for f in RAW.glob("T*.tsv") if f.name.count(".") == 1)
     if not files:
         print(f"[error] no T*.tsv under {RAW}. Did you run run_bench.sh?",
               file=sys.stderr)

@@ -17,7 +17,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 
 task="T1_vcf_to_eigenstrat"
-out="$repo/benchmarks/results/raw/${task}.tsv"
+out="${GFC_BENCH_RAW_DIR:-$repo/benchmarks/results/raw}/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
 # Smoke dataset (committed fixture). Swap for a downloaded real dataset
@@ -27,7 +27,7 @@ input_dir="$repo/tests/test_data"
 : "${GFC_BENCH_VCF_PATTERN:=tiny.vcf}"
 : "${GFC_BENCH_REPLICATES:=5}"
 
-bench_dir="/tmp/gfc_bench_${task}"
+bench_dir="${GFC_BENCH_TMP:-/tmp}/gfc_bench_${task}"
 rm -rf "$bench_dir"
 mkdir -p "$bench_dir"
 

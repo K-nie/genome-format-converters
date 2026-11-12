@@ -8,7 +8,7 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 task="T8_pseudohaploid"
-out="$repo/benchmarks/results/raw/${task}.tsv"
+out="${GFC_BENCH_RAW_DIR:-$repo/benchmarks/results/raw}/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
 input_dir="$repo/tests/test_data"
@@ -16,7 +16,7 @@ input_dir="$repo/tests/test_data"
 : "${GFC_BENCH_VCF_PATTERN:=tiny.vcf}"
 : "${GFC_BENCH_REPLICATES:=5}"
 
-bench_dir="/tmp/gfc_bench_${task}"
+bench_dir="${GFC_BENCH_TMP:-/tmp}/gfc_bench_${task}"
 rm -rf "$bench_dir" && mkdir -p "$bench_dir"
 
 python "$repo/benchmarks/bench_one.py" --header > "$out"
@@ -39,7 +39,7 @@ done
 # competitor would be doing different work. The earlier handwritten
 # bcftools-query + Python baseline is no longer run.
 input_vcf="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN | head -1)"
-repro_out="$repo/benchmarks/results/raw/${task}.reproducibility.tsv"
+repro_out="${GFC_BENCH_RAW_DIR:-$repo/benchmarks/results/raw}/${task}.reproducibility.tsv"
 if python "$repo/benchmarks/t8_reproducibility.py" --vcf "$input_vcf" \
         --work "$bench_dir/repro" --copies "${GFC_BENCH_T8_COPIES:-4}" \
         --threads "${GFC_BENCH_THREADS:-4}" --out "$repro_out"; then

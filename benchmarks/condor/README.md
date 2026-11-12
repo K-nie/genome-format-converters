@@ -142,3 +142,40 @@ Datasets in `~/gfc-bench/benchmarks/data/` are cached — the download scripts s
 - `benchmarks/data/download_pfam_scan.sh` has placeholder URL — either host the pre-computed tblout on Zenodo or regenerate on the cluster via `hmmsearch`.
 - EIGENSOFT `convertf` and `pileupCaller` aren't in bioconda; they need source builds if you want T1 / T8 with proper references (skipped gracefully today).
 - Currently one job, one host, sequential. If a single-host run takes too long on the full dataset, split into 8 per-task jobs and use `condor_dagman` for the aggregation step. Out of scope for first pass.
+
+## Paper rerun (`paper_rerun.sub`)
+
+The paper's numbers come from one rerun split into six HTCondor jobs, one per
+phase. Each job writes to its own `benchmarks/results/raw_<phase>/` and
+`benchmarks/results/<phase>/` and tars the latter to
+`benchmarks/results/<phase>.<timestamp>.tar.gz`, so the jobs can run at the
+same time.
+
+| Phase | What it measures | Paper use |
+|---|---|---|
+| `main` | 8 tasks on chr22 / Y1000+ slice, n=10, four-state verdicts, T8 reproducibility | Figs 2 and 4, Table 1 |
+| `annotations` | T4/T5 on Ensembl R64 and GRCh38 chr22 gene annotations, n=10 | Results 3.2 |
+| `scaling` | T1/T2 at 10k/100k/1M sites, T4/T5 on chr22 at x1/x5/x25, n=3 | Fig 3 |
+| `cold` | main panel with input files evicted from the page cache before each replicate, n=5 | Supp. Table S2 |
+| `import` | start-up wall time and RSS per subcommand | Results 3.3 |
+| `footprint` | package count and disk size of fresh envs: gfc, the multi-tool stack, BioConvert, biopython.convert | Table 2 |
+
+Steps on the submit host, after pulling this branch:
+
+```
+cd ~/gfc-bench && bash benchmarks/condor/bootstrap.sh
+cd benchmarks/condor && condor_submit paper_rerun.sub
+```
+
+To run a single phase, replace the last line of `paper_rerun.sub` with, for
+example, `queue phase in (main)`. To keep all timing phases on the same
+hardware, uncomment the `requirements` line. Then copy
+`benchmarks/results/*.tar.gz` back.
+
+Knobs (set in the environment before `condor_submit`, which passes
+`getenv = True`): `GFC_BENCH_REPLICATES`, `GFC_BENCH_PLINK_MEM_MB` (default
+512), `GFC_BENCH_PLINK_DEFAULT_MEM=1` (also record uncapped plink rows),
+`GFC_SCALE_SITES`, `GFC_SCALE_FACTORS`.
+
+AGAT on GRCh38 chr22 x25 is the slowest cell. If the scaling job runs past the
+cluster's wall-time limit, lower `GFC_SCALE_FACTORS` to `1 5 10`.

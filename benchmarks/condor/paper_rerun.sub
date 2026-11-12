@@ -1,0 +1,43 @@
+# HTCondor submit file for the paper rerun: one job per phase.
+#
+# Prerequisite: bootstrap.sh has built the gfc-bench env (rerun it after
+# pulling, so environment.yml changes are picked up).
+#
+# Submit everything:
+#     cd <repo>/benchmarks/condor && condor_submit paper_rerun.sub
+# Submit one phase:
+#     condor_submit paper_rerun.sub -append 'queue phase in (main)'
+#     (then delete or comment out the `queue` line below for that call)
+#
+# Phases and rough wall time on the run-138850 hardware:
+#   main         8 tasks x ~4 tools x 10 reps on chr22     ~10-14 h
+#   annotations  T4/T5 on Ensembl R64 + GRCh38 chr22, n=10 ~2-4 h (AGAT dominates)
+#   scaling      T1/T2 at 10k/100k/1M sites; T4/T5 x1/x5/x25, n=3   ~8-12 h
+#   cold         main panel, page cache evicted per replicate, n=5  ~6-8 h
+#   import       start-up time per subcommand, 10 trials   < 10 min
+#   footprint    four fresh conda envs (needs network on the execute host) ~30 min
+#
+# Each job writes to its own results directory and scratch space, so the
+# jobs can run at the same time without overwriting each other.
+
+universe        = vanilla
+executable      = run_paper_rerun.sh
+arguments       = $(phase)
+getenv          = True
+should_transfer_files = NO
+initialdir      = $ENV(PWD)
+
+request_cpus    = 4
+request_memory  = 16 GB
+request_disk    = 50 GB
+
+# To keep every timing phase on the same hardware, pin one execute host,
+# for example the run-138850 host:
+# requirements  = (Machine == "scarcity-10.glbrc.org")
+
+log             = logs/rerun.$(ClusterId).$(phase).log
+output          = logs/rerun.$(ClusterId).$(phase).out
+error           = logs/rerun.$(ClusterId).$(phase).err
++JobDurationCategory = "Long"
+
+queue phase in (main annotations scaling cold import footprint)

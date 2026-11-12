@@ -33,12 +33,13 @@ cd "$repo"
 export GFC_BENCH_REPLICATES
 
 scratch="${GFC_SCALE_SCRATCH:-${TMPDIR:-/tmp}/gfc_scaling_inputs}"
-dest="$here/results/raw/scaling"
+raw_dir="${GFC_BENCH_RAW_DIR:-$here/results/raw}"
+dest="$raw_dir/scaling"
 mkdir -p "$scratch" "$dest"
 what="${1:-all}"
 
 save() {  # save <task_script_name> <size_label>
-    local task="$1" size="$2" raw="$here/results/raw/$1"
+    local task="$1" size="$2" raw="$raw_dir/$1"
     cp "$raw.tsv" "$dest/${task}__${size}.tsv"
     if [[ -f "$raw.verdicts.tsv" ]]; then
         cp "$raw.verdicts.tsv" "$dest/${task}__${size}.verdicts.tsv"

@@ -5,7 +5,7 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 task="T7_orthogroups"
-out="$repo/benchmarks/results/raw/${task}.tsv"
+out="${GFC_BENCH_RAW_DIR:-$repo/benchmarks/results/raw}/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
 # Synthesise a 2-species, 2-OG fixture so the harness is immediately runnable.
@@ -32,7 +32,7 @@ EOF
 fi
 
 : "${GFC_BENCH_REPLICATES:=5}"
-bench_dir="/tmp/gfc_bench_${task}"
+bench_dir="${GFC_BENCH_TMP:-/tmp}/gfc_bench_${task}"
 rm -rf "$bench_dir" && mkdir -p "$bench_dir"
 
 python "$repo/benchmarks/bench_one.py" --header > "$out"
