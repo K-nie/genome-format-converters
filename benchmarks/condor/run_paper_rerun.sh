@@ -40,14 +40,27 @@ export LD_LIBRARY_PATH PYTHONPATH
 set +u
 conda activate gfc-bench
 set -u
-# bootstrap.sh installs gfc from this checkout in editable mode. Reinstall
-# only if the env's gfc points somewhere else (parallel jobs would race on
-# a shared reinstall).
-gfc_src="$(python -c 'import genome_format_converters as g; print(g.__file__)' 2>/dev/null || true)"
-if [[ "$gfc_src" != "$repo_root"/* ]]; then
-    echo "[info] gfc in env is not this checkout ($gfc_src); reinstalling" >&2
-    pip install -e . --no-deps --quiet --force-reinstall 2>&1 | tail -3
+# Run gfc from THIS checkout without touching the shared conda env: the
+# env's own install may point at another checkout, and reinstalling it from
+# parallel jobs fails (run 150657: OSError on .../envs/gfc-bench/bin/gfc).
+# PYTHONPATH makes `import genome_format_converters` resolve to src/, and a
+# per-job shim puts a matching `gfc` first on PATH.
+export PYTHONPATH="$repo_root/src${PYTHONPATH:+:$PYTHONPATH}"
+shim_dir="${_CONDOR_SCRATCH_DIR:-${TMPDIR:-/tmp}}/gfc_shim_${phase}_$$"
+mkdir -p "$shim_dir"
+cat > "$shim_dir/gfc" <<SHIM
+#!/usr/bin/env bash
+exec "$(command -v python)" -m genome_format_converters.cli "\$@"
+SHIM
+chmod +x "$shim_dir/gfc"
+export PATH="$shim_dir:$PATH"
+gfc_src="$(python -c 'import genome_format_converters as g; print(g.__file__)')"
+want="$(cd "$repo_root/src" && pwd -P)"
+if [[ "$(cd "$(dirname "$gfc_src")/.." && pwd -P)" != "$want" ]]; then
+    echo "[err ] gfc resolves to $gfc_src, not $want" >&2
+    exit 1
 fi
+echo "[info] gfc from $gfc_src via $(command -v gfc)" >&2
 echo "[info] phase=$phase gfc=$(gfc --version) python=$(command -v python)" >&2
 
 mkdir -p "$raw" "$dest" "$GFC_BENCH_TMP"
@@ -96,7 +109,9 @@ case "$phase" in
         for d in "$bench"/data/annotations/*/; do
             label="$(basename "$d")"
             for task in T4_gff3_to_gtf T5_gff3_to_bed12; do
-                GFC_BENCH_INPUT_DIR="$d" bash "$bench/tasks/${task}.sh"
+                GFC_BENCH_INPUT_DIR="$d" bash "$bench/tasks/${task}.sh" || \
+                    echo "[warn] $task on $label exited non-zero" >&2
+                [[ -f "$raw/${task}.tsv" ]] || continue
                 cp "$raw/${task}.tsv" "$dest/${task}__${label}.tsv"
                 [[ -f "$raw/${task}.verdicts.tsv" ]] && \
                     cp "$raw/${task}.verdicts.tsv" "$dest/${task}__${label}.verdicts.tsv"

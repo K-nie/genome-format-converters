@@ -77,7 +77,7 @@ done
 #     captures the convertf message; this lets us iterate without
 #     re-running the whole 4-min plink2 stage.
 # plink2 reserves a large workspace by default; cap it so RSS reflects work.
-: "${GFC_BENCH_PLINK_MEM_MB:=512}"
+: "${GFC_BENCH_PLINK_MEM_MB:=640}"
 if command -v convertf >/dev/null 2>&1; then
     cf_version="$(conda list eigensoft 2>/dev/null \
         | awk '$1=="eigensoft" {print "v"$2; exit}')"
@@ -113,9 +113,12 @@ if command -v convertf >/dev/null 2>&1; then
     # so its wall time and RSS are not mixed with plink2's.
     pre="$bench_dir/convertf_input"
     mkdir -p "$pre"
-    plink2 --vcf "$vcf_input" --threads 1 --memory "$GFC_BENCH_PLINK_MEM_MB" \
-        --allow-extra-chr --make-bed --out "$pre/$stem" --silent
+    if ! plink2 --vcf "$vcf_input" --threads 1 --memory "$GFC_BENCH_PLINK_MEM_MB" \
+            --allow-extra-chr --make-bed --out "$pre/$stem" --silent; then
+        echo "[warn] T1 convertf-only: PACKEDPED prep failed; skipping" >&2
+    fi
     for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        [[ -f "$pre/$stem.bed" ]] || break
         out_dir="$bench_dir/convertfonly_rep${rep}"
         mkdir -p "$out_dir"
         printf 'genotypename:    %s.bed\nsnpname:         %s.bim\nindivname:       %s.fam\ninputformat:     PACKEDPED\noutputformat:    EIGENSTRAT\ngenotypeoutname: %s.geno\nsnpoutname:      %s.snp\nindivoutname:    %s.ind\nfamilynames:     NO\nnumchrom:        90\n' \

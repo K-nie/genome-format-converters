@@ -32,9 +32,10 @@ done
 # plink 1.9/2 reserve a large workspace up front (plink2 takes half of
 # system RAM by default, capped near ~1.3 GB on our slots), so peak RSS
 # measures the allocator, not the work. We cap it with --memory
-# (GFC_BENCH_PLINK_MEM_MB, default 512) so RSS is comparable across tools.
+# (GFC_BENCH_PLINK_MEM_MB, default 640,
+# plink2's minimum) so RSS is comparable across tools.
 # Set GFC_BENCH_PLINK_DEFAULT_MEM=1 to also record uncapped rows.
-: "${GFC_BENCH_PLINK_MEM_MB:=512}"
+: "${GFC_BENCH_PLINK_MEM_MB:=640}"
 : "${GFC_BENCH_PLINK_DEFAULT_MEM:=0}"
 
 # ---------- plink2 ----------------------------------------------------------

@@ -57,7 +57,7 @@ if [[ "$what" == "all" || "$what" == "vcf" ]]; then
         fi
         for task in T1_vcf_to_eigenstrat T2_vcf_to_plink; do
             GFC_BENCH_INPUT_DIR="$d" GFC_BENCH_VCF_PATTERN="chr22_${n}.vcf.gz" \
-                bash "$here/tasks/${task}.sh"
+                bash "$here/tasks/${task}.sh" || echo "[warn] $task @ $n exited non-zero" >&2
             save "$task" "sites${n}"
         done
     done
@@ -73,7 +73,8 @@ if [[ "$what" == "all" || "$what" == "gff3" ]]; then
                 --factor "$k" --output-dir "$d"
         fi
         for task in T4_gff3_to_gtf T5_gff3_to_bed12; do
-            GFC_BENCH_INPUT_DIR="$d" bash "$here/tasks/${task}.sh"
+            GFC_BENCH_INPUT_DIR="$d" bash "$here/tasks/${task}.sh" || \
+                echo "[warn] $task @ x$k exited non-zero" >&2
             save "$task" "${label}_x${k}"
         done
     done
