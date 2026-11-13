@@ -608,7 +608,7 @@ def populate(task: str, bench_dir: Path, tsv_path: Path,
         verdict_per_tool[tool] = v.correct_flag
         sidecar.append([task, tool, ref_name or "", v.state,
                         ", ".join(v.conventions), v.reason])
-        summary_bits.append(f"{tool}={v.state}")
+        summary_bits.append(f"{tool}={v.state}" + (f" ({v.reason})" if v.reason else ""))
 
     with tsv_path.with_suffix(".verdicts.tsv").open("w", newline="") as fh:
         csv.writer(fh, delimiter="\t").writerows(sidecar)

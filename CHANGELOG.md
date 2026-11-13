@@ -14,6 +14,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   RSS 55 MB -> 19 MB locally). `benchmarks/bench_import.py` measures it.
 
 ### Benchmarks
+- The T1/T2 comparators pair records by chrom, position and allele set,
+  so split multi-allelic sites (two biallelic records at one position, as in
+  1000 Genomes phase 3) are no longer reported as disagreements.
+- The T8 reference-free check streams the VCF with numpy per site instead of
+  holding every genotype in memory (about 20 GB on chr22). The T8
+  reproducibility runs use the first 20,000 sites, log each step, and time
+  out after an hour per call. `--threads` workers get stdin closed.
 - T8 is now a reproducibility and correctness task
   (`benchmarks/t8_reproducibility.py`); the handwritten bcftools baseline is
   gone. plink runs with a capped `--memory`; T1 adds convertf-only rows.

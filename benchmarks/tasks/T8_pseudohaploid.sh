@@ -40,7 +40,18 @@ done
 # bcftools-query + Python baseline is no longer run.
 input_vcf="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN | head -1)"
 repro_out="${GFC_BENCH_RAW_DIR:-$repo/benchmarks/results/raw}/${task}.reproducibility.tsv"
-if python "$repo/benchmarks/t8_reproducibility.py" --vcf "$input_vcf" \
+# The reproducibility checks run 20 conversions (5 runs x GFC_BENCH_T8_COPIES
+# files), so on a whole chromosome they use the first
+# GFC_BENCH_T8_REPRO_SITES records (default 20000; 0 = the whole file).
+# Seeding and threading do not depend on file size.
+repro_vcf="$input_vcf"
+: "${GFC_BENCH_T8_REPRO_SITES:=20000}"
+if [[ "$GFC_BENCH_T8_REPRO_SITES" != 0 ]]; then
+    repro_vcf="$bench_dir/repro_subset.vcf.gz"
+    python "$repo/benchmarks/make_scaled_inputs.py" vcf --input "$input_vcf" \
+        --sites "$GFC_BENCH_T8_REPRO_SITES" --output "$repro_vcf"
+fi
+if python "$repo/benchmarks/t8_reproducibility.py" --vcf "$repro_vcf" \
         --work "$bench_dir/repro" --copies "${GFC_BENCH_T8_COPIES:-4}" \
         --threads "${GFC_BENCH_THREADS:-4}" --out "$repro_out"; then
     echo "[ok  ] T8 reproducibility checks passed ($repro_out)" >&2

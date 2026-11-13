@@ -101,6 +101,38 @@ def _missing(what: str) -> Verdict:
     return Verdict(LIMITATION, f"missing {what}")
 
 
+class _SiteIndex:
+    """Reference sites keyed by (normalised chrom, pos), keeping every record.
+
+    1000 Genomes phase 3 splits a multi-allelic site into several biallelic
+    records at the same position (e.g. 22:200 G>T and 22:200 G>A), so a
+    plain (chrom, pos) key collapses them and pairs a candidate record with
+    the wrong reference record. ``take`` pairs records by allele set first,
+    and each reference record is used once.
+    """
+
+    def __init__(self, rows, chrom_i: int, pos_i: int, a1_i: int, a2_i: int):
+        self._by_pos: Dict[Tuple[str, int], List[int]] = {}
+        self._alleles = []
+        for i, r in enumerate(rows):
+            self._by_pos.setdefault((_norm_chrom(r[chrom_i]), int(r[pos_i])), []).append(i)
+            self._alleles.append(frozenset((r[a1_i].upper(), r[a2_i].upper())))
+        self.used = set()
+
+    def take(self, chrom: str, pos: int, a1: str, a2: str) -> Optional[int]:
+        free = [i for i in self._by_pos.get((_norm_chrom(chrom), int(pos)), [])
+                if i not in self.used]
+        if not free:
+            return None
+        want = frozenset((a1.upper(), a2.upper()))
+        exact = [i for i in free if self._alleles[i] == want]
+        # A monomorphic reference record may carry '0' for one allele.
+        partial = [i for i in free if "0" in self._alleles[i] and self._alleles[i] & want]
+        j = (exact or partial or free)[0]
+        self.used.add(j)
+        return j
+
+
 # ------------------------------------------------- T1 VCF -> EIGENSTRAT
 
 
@@ -134,20 +166,19 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
         if sorted(c_ind) != sorted(r_ind):
             return Verdict(DISAGREEMENT, "sample sets differ")
         return Verdict(DISAGREEMENT, "sample order differs")
-    # Index reference sites by (normalised chrom, position).
-    r_by_pos: Dict[Tuple[str, int], Tuple[List[str], str]] = {}
-    for s, g in zip(r_snps, r_geno):
-        r_by_pos[(_norm_chrom(s[1]), int(s[3]))] = (s, g)
+    r_index = _SiteIndex(r_snps, 1, 3, 4, 5)
+    order = []
     if len(c_snps) != len(c_geno) or len(r_snps) != len(r_geno):
         return Verdict(DISAGREEMENT, ".snp and .geno row counts differ")
     if len(c_snps) != len(r_snps):
         return Verdict(DISAGREEMENT,
                        f"site count {len(c_snps)} vs reference {len(r_snps)}")
     for s, g in zip(c_snps, c_geno):
-        key = (_norm_chrom(s[1]), int(s[3]))
-        if key not in r_by_pos:
+        j = r_index.take(s[1], s[3], s[4], s[5])
+        if j is None:
             return Verdict(DISAGREEMENT, f"site {s[1]}:{s[3]} absent in reference")
-        rs, rg = r_by_pos[key]
+        order.append(j)
+        rs, rg = r_snps[j], r_geno[j]
         if s[1] != rs[1]:
             conv.add("chrom-label")
         if s[0] != rs[0]:
@@ -164,8 +195,7 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
                 return Verdict(DISAGREEMENT, f"genotypes differ at {s[1]}:{s[3]} (after allele swap)")
         else:
             return Verdict(DISAGREEMENT, f"alleles differ at {s[1]}:{s[3]}")
-    if [(_norm_chrom(s[1]), int(s[3])) for s in c_snps] != \
-            [(_norm_chrom(s[1]), int(s[3])) for s in r_snps]:
+    if order != sorted(order):
         conv.add("site-order")
     return Verdict(STRUCTURAL, ", ".join(sorted(conv)) or "whitespace/format",
                    sorted(conv))
@@ -217,16 +247,13 @@ def compare_t2(cand: Path, ref: Path, **_) -> Verdict:
     if [f[:2] for f in c_fam] != [f[:2] for f in r_fam]:
         conv.add("family-id")
 
-    r_index: Dict[Tuple[str, int], int] = {}
-    for i, b in enumerate(r_bim):
-        r_index.setdefault((_norm_chrom(b[0]), int(b[3])), i)
-    matched = set()
+    r_index = _SiteIndex(r_bim, 0, 3, 4, 5)
+    order = []
     for i, b in enumerate(c_bim):
-        key = (_norm_chrom(b[0]), int(b[3]))
-        if key not in r_index:
+        j = r_index.take(b[0], b[3], b[4], b[5])
+        if j is None:
             return Verdict(DISAGREEMENT, f"variant {b[0]}:{b[3]} absent in reference")
-        j = r_index[key]
-        matched.add(j)
+        order.append(j)
         rb = r_bim[j]
         if b[0] != rb[0]:
             conv.add("chrom-label")
@@ -250,14 +277,13 @@ def compare_t2(cand: Path, ref: Path, **_) -> Verdict:
             return Verdict(DISAGREEMENT, f"alleles differ at {b[0]}:{b[3]}")
         if not same:
             return Verdict(DISAGREEMENT, f"genotypes differ at {b[0]}:{b[3]}")
-    extra = [r_bim[j] for j in range(len(r_bim)) if j not in matched]
+    extra = [r_bim[j] for j in range(len(r_bim)) if j not in r_index.used]
     if extra:
         non_snp = [b for b in extra if len(b[4]) != 1 or len(b[5]) != 1]
         if len(non_snp) != len(extra):
             return Verdict(DISAGREEMENT,
                            f"{len(extra) - len(non_snp)} reference SNPs missing from candidate")
         conv.add("indels-excluded")
-    order = [r_index[(_norm_chrom(b[0]), int(b[3]))] for b in c_bim]
     if order != sorted(order):
         conv.add("site-order")
     return Verdict(STRUCTURAL, ", ".join(sorted(conv)) or "format", sorted(conv))
@@ -511,11 +537,27 @@ def compare_t7(cand: Path, ref: Path, **_) -> Verdict:
 # ------------------------------------------------- T8 pseudohaploid
 
 
-def _vcf_gt_classes(vcf: Path):
-    """Map (norm chrom, pos) -> list of gt classes for biallelic SNPs."""
+def _iter_vcf_sites(vcf: Path):
+    """Yield (chrom, pos, REF, ALT, gt) for biallelic SNPs, streaming.
+
+    ``gt`` is an int array per sample: 0 hom-ref, 1 het, 2 missing, 3
+    hom-alt (cyvcf2's gt_types coding). Uses cyvcf2 when installed, else a
+    pure-Python parser; neither holds more than one record in memory.
+    """
+    import numpy as np
+    try:
+        import cyvcf2
+    except ImportError:  # pragma: no cover - exercised only without cyvcf2
+        cyvcf2 = None
+    if cyvcf2 is not None:
+        with cyvcf2.VCF(str(vcf)) as fh:
+            for v in fh:
+                if len(v.ALT) != 1 or len(v.REF) != 1 or len(v.ALT[0]) != 1:
+                    continue
+                yield v.CHROM, v.POS, v.REF.upper(), v.ALT[0].upper(), v.gt_types
+        return
     import gzip
     opener = gzip.open if open(vcf, "rb").read(2) == b"\x1f\x8b" else open
-    sites = {}
     with opener(vcf, "rt") as fh:
         for line in fh:
             if line.startswith("#"):
@@ -523,19 +565,18 @@ def _vcf_gt_classes(vcf: Path):
             p = line.rstrip("\n").split("\t")
             if "," in p[4] or len(p[3]) != 1 or len(p[4]) != 1:
                 continue
-            cls = []
-            for s in p[9:]:
-                g = re.split(r"[/|]", s.split(":")[0])
-                if any(a == "." for a in g):
-                    cls.append("miss")
-                elif all(a == "0" for a in g):
-                    cls.append("ref")
-                elif all(a == "1" for a in g):
-                    cls.append("alt")
+            gt = []
+            for smp in p[9:]:
+                a = re.split(r"[/|]", smp.split(":")[0])
+                if any(x == "." for x in a):
+                    gt.append(2)
+                elif all(x == "0" for x in a):
+                    gt.append(0)
+                elif all(x == "1" for x in a):
+                    gt.append(3)
                 else:
-                    cls.append("het")
-            sites[(_norm_chrom(p[0]), int(p[1]))] = (p[3].upper(), p[4].upper(), cls)
-    return sites
+                    gt.append(1)
+            yield p[0], int(p[1]), p[3].upper(), p[4].upper(), np.array(gt)
 
 
 def check_pseudohaploid(out_dir: Path, input_vcf: Path, alpha: float = 1e-6) -> Verdict:
@@ -545,34 +586,62 @@ def check_pseudohaploid(out_dir: Path, input_vcf: Path, alpha: float = 1e-6) -> 
     REF allele, hom-alt -> ALT, missing -> 9, het -> either), and het draws
     must be balanced: a two-sided binomial test of #REF picks among hets
     at ``alpha`` flags a biased sampler.
+
+    The output and the VCF are read in lockstep, one site at a time, with
+    numpy per site, so memory stays flat on whole-chromosome inputs (the
+    earlier version held every genotype of the VCF as Python strings,
+    about 20 GB for 1000 Genomes chr22). Output sites must appear in input
+    order; input sites the converter filtered out are skipped. Sites are
+    matched on chrom, position and allele set, so split multi-allelic
+    records at one position are told apart.
     """
-    e = _read_eigenstrat(out_dir)
-    if e is None or not Path(input_vcf).is_file():
+    import numpy as np
+    out_dir = Path(out_dir)
+    geno = _files(out_dir, "*.geno")
+    snp = _files(out_dir, "*.snp")
+    ind = _files(out_dir, "*.ind")
+    if not (geno and snp and ind) or not Path(input_vcf).is_file():
         return _missing("pseudohaploid output or input VCF")
-    snps, genos, _inds, _ = e
-    src = _vcf_gt_classes(Path(input_vcf))
+    n_ind = len(_data_lines(ind[0]))
+    src = _iter_vcf_sites(Path(input_vcf))
     het_ref = het_total = 0
-    for s, g in zip(snps, genos):
-        key = (_norm_chrom(s[1]), int(s[3]))
-        if key not in src:
-            return Verdict(DISAGREEMENT, f"site {s[1]}:{s[3]} not in input")
-        ref_a, alt_a, cls = src[key]
-        major = s[4].upper()
-        if {s[4].upper(), s[5].upper()} != {ref_a, alt_a}:
-            return Verdict(DISAGREEMENT, f"alleles differ at {s[1]}:{s[3]}")
-        if len(g) != len(cls):
-            return Verdict(DISAGREEMENT, "sample count differs from input")
-        ref_code = "2" if major == ref_a else "0"
-        alt_code = "0" if ref_code == "2" else "2"
-        for call, c in zip(g, cls):
-            expected = {"ref": ref_code, "alt": alt_code, "miss": "9"}.get(c)
-            if expected is not None and call != expected:
-                return Verdict(DISAGREEMENT, f"call {call} inconsistent with {c} at {s[1]}:{s[3]}")
-            if c == "het":
-                if call not in "02":
-                    return Verdict(DISAGREEMENT, f"het drawn as {call} at {s[1]}:{s[3]}")
-                het_total += 1
-                het_ref += call == ref_code
+    n_sites = 0
+    with open(snp[0]) as sf, open(geno[0], "rb") as gf:
+        for sline in sf:
+            if not sline.strip() or sline.startswith("#"):
+                continue
+            s = sline.split()
+            g = np.frombuffer(gf.readline().rstrip(b"\r\n"), dtype=np.uint8)
+            chrom, pos = _norm_chrom(s[1]), int(s[3])
+            major, minor = s[4].upper(), s[5].upper()
+            for vchrom, vpos, ref_a, alt_a, gt in src:
+                if (_norm_chrom(vchrom) == chrom and vpos == pos
+                        and {ref_a, alt_a} == {major, minor}):
+                    break
+            else:
+                return Verdict(DISAGREEMENT,
+                               f"site {s[1]}:{s[3]} not in input (or out of order)")
+            if len(g) != len(gt) or len(g) != n_ind:
+                return Verdict(DISAGREEMENT,
+                               f"sample count differs from input at {s[1]}:{s[3]}")
+            ref_code = ord("2") if major == ref_a else ord("0")
+            alt_code = ord("0") if ref_code == ord("2") else ord("2")
+            for cls, want in ((0, ref_code), (3, alt_code), (2, ord("9"))):
+                bad = (gt == cls) & (g != want)
+                if bad.any():
+                    call = chr(g[bad.argmax()])
+                    name = {0: "ref", 3: "alt", 2: "miss"}[cls]
+                    return Verdict(DISAGREEMENT,
+                                   f"call {call} inconsistent with {name} at {s[1]}:{s[3]}")
+            het = gt == 1
+            hg = g[het]
+            if ((hg != ord("0")) & (hg != ord("2"))).any():
+                return Verdict(DISAGREEMENT, f"het drawn as non-0/2 at {s[1]}:{s[3]}")
+            het_total += int(het.sum())
+            het_ref += int((hg == ref_code).sum())
+            n_sites += 1
+        if gf.readline().strip():
+            return Verdict(DISAGREEMENT, ".geno has more rows than .snp")
     if het_total:
         p = _binom_two_sided(het_ref, het_total)
         if p < alpha:

@@ -30,9 +30,11 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -41,14 +43,34 @@ from four_state import check_pseudohaploid  # noqa: E402
 EXTS = (".geno", ".snp", ".ind")
 
 
-def _gfc(*args: str) -> None:
+# Per-call limit, so a stuck conversion fails the task instead of holding
+# the job for hours (GFC_BENCH_T8_TIMEOUT seconds, default 1 h).
+TIMEOUT = float(os.environ.get("GFC_BENCH_T8_TIMEOUT", "3600"))
+
+
+def _log(msg: str) -> None:
+    print(f"[t8  ] {time.strftime('%H:%M:%S')} {msg}", file=sys.stderr, flush=True)
+
+
+def _gfc(step: str, log_dir: Path, *args: str) -> None:
     cmd = [sys.executable, "-m", "genome_format_converters.cli",
            "vcf-to-pseudohaploid", *args]
-    res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                         text=True)
-    if res.returncode != 0:
-        sys.stderr.write(res.stderr)
-        raise SystemExit(f"gfc failed: {' '.join(cmd)}")
+    log = log_dir / f"{step}.log"
+    _log(f"{step}: start")
+    t0 = time.monotonic()
+    # stderr goes to a file, not a pipe, and stdin is closed: nothing the
+    # workers inherit can block on this process.
+    with open(log, "w") as fh:
+        try:
+            rc = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                stderr=fh, timeout=TIMEOUT).returncode
+        except subprocess.TimeoutExpired:
+            raise SystemExit(f"[t8  ] {step}: no result after {TIMEOUT:.0f} s; "
+                             f"see {log}")
+    if rc != 0:
+        sys.stderr.write(log.read_text()[-4000:])
+        raise SystemExit(f"gfc failed ({step}): {' '.join(cmd)}")
+    _log(f"{step}: done in {time.monotonic() - t0:.1f} s")
 
 
 def _same_tree(a: Path, b: Path, stems) -> tuple:
@@ -86,16 +108,18 @@ def main() -> None:
     out = {name: work / name for name in
            ("serial_a", "serial_b", "threads", "alone", "seed43")}
 
-    _gfc("--input-dir", str(inp), "--output-dir", str(out["serial_a"]),
+    logs = work / "logs"
+    logs.mkdir()
+    _gfc("serial_a", logs, "--input-dir", str(inp), "--output-dir", str(out["serial_a"]),
          "--pattern", pattern, "--seed", "42", "--force")
-    _gfc("--input-dir", str(inp), "--output-dir", str(out["serial_b"]),
+    _gfc("serial_b", logs, "--input-dir", str(inp), "--output-dir", str(out["serial_b"]),
          "--pattern", pattern, "--seed", "42", "--force")
-    _gfc("--input-dir", str(inp), "--output-dir", str(out["threads"]),
+    _gfc("threads", logs, "--input-dir", str(inp), "--output-dir", str(out["threads"]),
          "--pattern", pattern, "--seed", "42", "--threads", str(args.threads),
          "--force")
-    _gfc("--input-dir", str(inp), "--output-dir", str(out["alone"]),
+    _gfc("alone", logs, "--input-dir", str(inp), "--output-dir", str(out["alone"]),
          "--pattern", stems[-1] + suffix, "--seed", "42", "--force")
-    _gfc("--input-dir", str(inp), "--output-dir", str(out["seed43"]),
+    _gfc("seed43", logs, "--input-dir", str(inp), "--output-dir", str(out["seed43"]),
          "--pattern", pattern, "--seed", "43", "--force")
 
     rows = []
@@ -118,6 +142,7 @@ def main() -> None:
             for ext in EXTS:
                 shutil.copy(d / (stem + ext), single / (stem + ext))
             v42.append((d.name, stem, check_pseudohaploid(single, vcf)))
+            _log(f"reference-free check {d.name}/{stem}: {v42[-1][2].state}")
     # A file with no heterozygous calls has nothing to draw, so identical
     # output under a new seed is then expected. The verdict reason reads
     # "stochastic draw; <ref>/<total> het draws REF".

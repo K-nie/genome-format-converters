@@ -248,13 +248,15 @@ def _run_parallel(args, in_dir, out_dir, pattern, threads: int) -> None:
     if len(files) <= 1:
         argv = _strip_flags(sys.argv[1:], {"--threads"}, set())
         sys.exit(subprocess.call([sys.executable, "-m", "genome_format_converters.cli",
-                                  *argv, "--threads", "1"]))
+                                  *argv, "--threads", "1"], stdin=subprocess.DEVNULL))
     base = _strip_flags(sys.argv[1:], {"--threads", "--pattern"}, {"--force"})
 
     def work(f: Path) -> int:
         cmd = [sys.executable, "-m", "genome_format_converters.cli", *base,
                "--pattern", _glob.escape(f.name), "--threads", "1", "--force"]
-        return subprocess.call(cmd)
+        # Workers never read stdin; closing it rules out a worker blocking
+        # on a terminal or pipe that the parent inherited.
+        return subprocess.call(cmd, stdin=subprocess.DEVNULL)
 
     with ThreadPoolExecutor(max_workers=threads) as pool:
         codes = list(pool.map(work, files))

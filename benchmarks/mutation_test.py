@@ -513,8 +513,15 @@ def gbk_drop_feature(d):
 # -- pseudohaploid
 
 
+def _gt_classes(vcf):
+    """(norm chrom, pos) -> (REF, ALT, class per sample) for a small VCF."""
+    names = {0: "ref", 1: "het", 2: "miss", 3: "alt"}
+    return {(fs._norm_chrom(c), int(pos)): (r, a, [names[int(x)] for x in gt])
+            for c, pos, r, a, gt in fs._iter_vcf_sites(vcf)}
+
+
 def ph_homref_flip(d, vcf):
-    src = fs._vcf_gt_classes(vcf)
+    src = _gt_classes(vcf)
     snp = next(d.glob("*.snp")).read_text().splitlines()
     geno_f = next(d.glob("*.geno"))
     g = geno_f.read_text().splitlines()
@@ -529,7 +536,7 @@ def ph_homref_flip(d, vcf):
 
 
 def ph_missing_filled(d, vcf):
-    src = fs._vcf_gt_classes(vcf)
+    src = _gt_classes(vcf)
     snp = next(d.glob("*.snp")).read_text().splitlines()
     geno_f = next(d.glob("*.geno"))
     g = geno_f.read_text().splitlines()
@@ -545,7 +552,7 @@ def ph_missing_filled(d, vcf):
 
 def ph_biased_sampler(d, vcf):
     """Every het resolved to REF: a sampler that is not random."""
-    src = fs._vcf_gt_classes(vcf)
+    src = _gt_classes(vcf)
     snp = next(d.glob("*.snp")).read_text().splitlines()
     geno_f = next(d.glob("*.geno"))
     g = geno_f.read_text().splitlines()
@@ -557,7 +564,7 @@ def ph_biased_sampler(d, vcf):
 
 
 def ph_het_as_one(d, vcf):
-    src = fs._vcf_gt_classes(vcf)
+    src = _gt_classes(vcf)
     snp = next(d.glob("*.snp")).read_text().splitlines()
     geno_f = next(d.glob("*.geno"))
     g = geno_f.read_text().splitlines()
