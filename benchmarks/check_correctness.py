@@ -585,7 +585,11 @@ def populate(task: str, bench_dir: Path, tsv_path: Path,
     sidecar: list[list[str]] = [["task", "tool", "reference", "state", "conventions", "reason"]]
     summary_bits: list[str] = []
     distinct_tools = sorted({r[ix_tool] for r in rows[1:]})
+    import time as _time
     for tool in distinct_tools:
+        _t0 = _time.monotonic()
+        print(f"[corr {task}] {_time.strftime('%H:%M:%S')} checking {tool}",
+              file=sys.stderr, flush=True)
         if task == "T8":
             tool_dir = gfc_dir if tool == "gfc" else _rep1_dir(bench_dir, task, tool)
             if tool_dir is None:
@@ -609,6 +613,8 @@ def populate(task: str, bench_dir: Path, tsv_path: Path,
         sidecar.append([task, tool, ref_name or "", v.state,
                         ", ".join(v.conventions), v.reason])
         summary_bits.append(f"{tool}={v.state}" + (f" ({v.reason})" if v.reason else ""))
+        print(f"[corr {task}] {tool}: {v.state} in {_time.monotonic() - _t0:.0f} s",
+              file=sys.stderr, flush=True)
 
     with tsv_path.with_suffix(".verdicts.tsv").open("w", newline="") as fh:
         csv.writer(fh, delimiter="\t").writerows(sidecar)

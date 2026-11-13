@@ -101,42 +101,120 @@ def _missing(what: str) -> Verdict:
     return Verdict(LIMITATION, f"missing {what}")
 
 
-class _SiteIndex:
-    """Reference sites keyed by (normalised chrom, pos), keeping every record.
+class _Mismatch(Exception):
+    """A structural defect found while streaming (row counts, .bed length)."""
 
-    1000 Genomes phase 3 splits a multi-allelic site into several biallelic
-    records at the same position (e.g. 22:200 G>T and 22:200 G>A), so a
-    plain (chrom, pos) key collapses them and pairs a candidate record with
-    the wrong reference record. ``take`` pairs records by allele set first,
-    and each reference record is used once.
+
+def _same_bytes(cand: Sequence[Path], ref: Sequence[Path]) -> bool:
+    """Byte equality (CRLF = LF for text) without reading whole files."""
+    import filecmp
+    from itertools import zip_longest
+    if len(cand) != len(ref) or not cand:
+        return False
+    for a, b in zip(cand, ref):
+        if a.suffix == ".bed":
+            if not filecmp.cmp(a, b, shallow=False):
+                return False
+            continue
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            for la, lb in zip_longest(fa, fb):
+                if la is None or lb is None or la.rstrip(b"\r\n") != lb.rstrip(b"\r\n"):
+                    return False
+    return True
+
+
+def _pair_stream(c_items, r_items, key, loose):
+    """Pair two record streams, holding only out-of-step records in memory.
+
+    Items are ``(index, fields, payload)``. Records are paired on ``key``
+    (chrom, pos and allele set), so the two biallelic records 1000 Genomes
+    writes for a split multi-allelic site are told apart. When both files
+    list sites in the same order, which converters of one VCF do, nothing
+    is buffered and memory stays flat on whole chromosomes. Records left
+    over are paired on ``loose`` (chrom, pos) so allele mismatches and
+    monomorphic '0' alleles are still reported; any remaining ones come out
+    as ``(c, None)`` or ``(None, r)``.
     """
+    from collections import deque
+    from itertools import zip_longest
+    c_pend: Dict = {}
+    r_pend: Dict = {}
 
-    def __init__(self, rows, chrom_i: int, pos_i: int, a1_i: int, a2_i: int):
-        self._by_pos: Dict[Tuple[str, int], List[int]] = {}
-        self._alleles = []
-        for i, r in enumerate(rows):
-            self._by_pos.setdefault((_norm_chrom(r[chrom_i]), int(r[pos_i])), []).append(i)
-            self._alleles.append(frozenset((r[a1_i].upper(), r[a2_i].upper())))
-        self.used = set()
+    def pop(d, k):
+        q = d[k]
+        x = q.popleft()
+        if not q:
+            del d[k]
+        return x
 
-    def take(self, chrom: str, pos: int, a1: str, a2: str) -> Optional[int]:
-        free = [i for i in self._by_pos.get((_norm_chrom(chrom), int(pos)), [])
-                if i not in self.used]
-        if not free:
-            return None
-        want = frozenset((a1.upper(), a2.upper()))
-        exact = [i for i in free if self._alleles[i] == want]
-        # A monomorphic reference record may carry '0' for one allele.
-        partial = [i for i in free if "0" in self._alleles[i] and self._alleles[i] & want]
-        j = (exact or partial or free)[0]
-        self.used.add(j)
-        return j
+    for c, r in zip_longest(c_items, r_items):
+        if c is not None and r is not None:
+            kc, kr = key(c), key(r)
+            if kc == kr and kc not in c_pend and kr not in r_pend:
+                yield c, r
+                continue
+        else:
+            kc = key(c) if c is not None else None
+            kr = key(r) if r is not None else None
+        if c is not None:
+            if kc in r_pend:
+                yield c, pop(r_pend, kc)
+            else:
+                c_pend.setdefault(kc, deque()).append(c)
+        if r is not None:
+            if kr in c_pend:
+                yield pop(c_pend, kr), r
+            else:
+                r_pend.setdefault(kr, deque()).append(r)
+    r_loose: Dict = {}
+    for q in r_pend.values():
+        for r in q:
+            r_loose.setdefault(loose(r), deque()).append(r)
+    for q in c_pend.values():
+        for c in q:
+            lk = loose(c)
+            yield c, (pop(r_loose, lk) if lk in r_loose else None)
+    for q in r_loose.values():
+        for r in q:
+            yield None, r
+
+
+def _site_key(ci: int, pi: int, a1: int, a2: int):
+    def key(item):
+        f = item[1]
+        return (_norm_chrom(f[ci]), int(f[pi]), frozenset((f[a1].upper(), f[a2].upper())))
+
+    def loose(item):
+        f = item[1]
+        return (_norm_chrom(f[ci]), int(f[pi]))
+    return key, loose
+
+
+def _in_order(pairs_idx) -> bool:
+    """True if reference indices, taken in candidate order, only increase."""
+    last = -1
+    for _ci, ri in sorted(pairs_idx):
+        if ri < last:
+            return False
+        last = ri
+    return True
+
+
+def _count_data_lines(files: Sequence[Path]) -> int:
+    n = 0
+    for f in files:
+        with open(f, "rb") as fh:
+            for line in fh:
+                if line.strip() and not line.startswith(b"#"):
+                    n += 1
+    return n
 
 
 # ------------------------------------------------- T1 VCF -> EIGENSTRAT
 
 
 def _read_eigenstrat(d: Path):
+    """Whole-file reader, kept for small inputs (tests, mutation helpers)."""
     geno = _files(d, "*.geno")
     snp = _files(d, "*.snp")
     ind = _files(d, "*.ind")
@@ -148,54 +226,86 @@ def _read_eigenstrat(d: Path):
     return snps, genos, inds, geno + snp + ind
 
 
-def _flip_geno(row: str) -> str:
+def _eig_items(snp_files: Sequence[Path], geno_files: Sequence[Path]):
+    """Yield (index, .snp fields, .geno row bytes), one site at a time."""
+    idx = 0
+    if len(snp_files) != len(geno_files):
+        raise _Mismatch(".snp and .geno file counts differ")
+    for sf, gf in zip(snp_files, geno_files):
+        with open(sf) as fs_, open(gf, "rb") as fg:
+            for line in fs_:
+                if not line.strip() or line.startswith("#"):
+                    continue
+                g = fg.readline()
+                if not g:
+                    raise _Mismatch(".snp and .geno row counts differ")
+                yield idx, line.split(), g.rstrip(b"\r\n")
+                idx += 1
+            if fg.readline().strip():
+                raise _Mismatch(".snp and .geno row counts differ")
+
+
+_FLIP02 = bytes.maketrans(b"02", b"20")
+
+
+def _flip_geno(row):
+    if isinstance(row, bytes):
+        return row.translate(_FLIP02)
     return row.translate(str.maketrans("02", "20"))
 
 
 def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
-    c = _read_eigenstrat(cand)
-    r = _read_eigenstrat(ref)
-    if c is None or r is None:
+    """T1 comparator. Streams both EIGENSTRAT sets; memory does not grow
+    with the number of sites when both list them in the same order."""
+    c_snp, c_geno, c_ind = (_files(cand, p) for p in ("*.snp", "*.geno", "*.ind"))
+    r_snp, r_geno, r_ind = (_files(ref, p) for p in ("*.snp", "*.geno", "*.ind"))
+    if not (c_snp and c_geno and c_ind and r_snp and r_geno and r_ind):
         return _missing("EIGENSTRAT triplet")
-    c_snps, c_geno, c_ind, c_files = c
-    r_snps, r_geno, r_ind, r_files = r
-    if _byte_equal(c_files, r_files):
+    if _same_bytes(c_geno + c_snp + c_ind, r_geno + r_snp + r_ind):
         return Verdict(BYTE)
-    conv = set()
-    if c_ind != r_ind:
-        if sorted(c_ind) != sorted(r_ind):
+    ci = [l.split()[0] for f in c_ind for l in _data_lines(f)]
+    ri = [l.split()[0] for f in r_ind for l in _data_lines(f)]
+    if ci != ri:
+        if sorted(ci) != sorted(ri):
             return Verdict(DISAGREEMENT, "sample sets differ")
         return Verdict(DISAGREEMENT, "sample order differs")
-    r_index = _SiteIndex(r_snps, 1, 3, 4, 5)
-    order = []
-    if len(c_snps) != len(c_geno) or len(r_snps) != len(r_geno):
-        return Verdict(DISAGREEMENT, ".snp and .geno row counts differ")
-    if len(c_snps) != len(r_snps):
-        return Verdict(DISAGREEMENT,
-                       f"site count {len(c_snps)} vs reference {len(r_snps)}")
-    for s, g in zip(c_snps, c_geno):
-        j = r_index.take(s[1], s[3], s[4], s[5])
-        if j is None:
-            return Verdict(DISAGREEMENT, f"site {s[1]}:{s[3]} absent in reference")
-        order.append(j)
-        rs, rg = r_snps[j], r_geno[j]
-        if s[1] != rs[1]:
-            conv.add("chrom-label")
-        if s[0] != rs[0]:
-            conv.add("snp-id")
-        if not math.isclose(float(s[2]), float(rs[2]), abs_tol=1e-6):
-            return Verdict(DISAGREEMENT, f"genetic position differs at {s[1]}:{s[3]}")
-        ca, ra = (s[4].upper(), s[5].upper()), (rs[4].upper(), rs[5].upper())
-        if ca == ra:
-            if g != rg:
-                return Verdict(DISAGREEMENT, f"genotypes differ at {s[1]}:{s[3]}")
-        elif ca == (ra[1], ra[0]):
-            conv.add("allele-order")
-            if _flip_geno(g) != rg:
-                return Verdict(DISAGREEMENT, f"genotypes differ at {s[1]}:{s[3]} (after allele swap)")
-        else:
-            return Verdict(DISAGREEMENT, f"alleles differ at {s[1]}:{s[3]}")
-    if order != sorted(order):
+    nc, nr = _count_data_lines(c_snp), _count_data_lines(r_snp)
+    if nc != nr:
+        return Verdict(DISAGREEMENT, f"site count {nc} vs reference {nr}")
+    conv = set()
+    key, loose = _site_key(1, 3, 4, 5)
+    idx_pairs = []
+    try:
+        for c, r in _pair_stream(_eig_items(c_snp, c_geno), _eig_items(r_snp, r_geno),
+                                 key, loose):
+            if r is None:
+                s = c[1]
+                return Verdict(DISAGREEMENT, f"site {s[1]}:{s[3]} absent in reference")
+            if c is None:
+                rs = r[1]
+                return Verdict(DISAGREEMENT, f"reference site {rs[1]}:{rs[3]} absent in candidate")
+            (i, s, g), (j, rs, rg) = c, r
+            idx_pairs.append((i, j))
+            if s[1] != rs[1]:
+                conv.add("chrom-label")
+            if s[0] != rs[0]:
+                conv.add("snp-id")
+            if not math.isclose(float(s[2]), float(rs[2]), abs_tol=1e-6):
+                return Verdict(DISAGREEMENT, f"genetic position differs at {s[1]}:{s[3]}")
+            ca, ra = (s[4].upper(), s[5].upper()), (rs[4].upper(), rs[5].upper())
+            if ca == ra:
+                if g != rg:
+                    return Verdict(DISAGREEMENT, f"genotypes differ at {s[1]}:{s[3]}")
+            elif ca == (ra[1], ra[0]):
+                conv.add("allele-order")
+                if g.translate(_FLIP02) != rg:
+                    return Verdict(DISAGREEMENT,
+                                   f"genotypes differ at {s[1]}:{s[3]} (after allele swap)")
+            else:
+                return Verdict(DISAGREEMENT, f"alleles differ at {s[1]}:{s[3]}")
+    except _Mismatch as e:
+        return Verdict(DISAGREEMENT, str(e))
+    if not _in_order(idx_pairs):
         conv.add("site-order")
     return Verdict(STRUCTURAL, ", ".join(sorted(conv)) or "whitespace/format",
                    sorted(conv))
@@ -205,6 +315,7 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
 
 
 def _read_plink(d: Path):
+    """Whole-file reader, kept for small inputs (tests, mutation helpers)."""
     bed, bim, fam = _files(d, "*.bed"), _files(d, "*.bim"), _files(d, "*.fam")
     if not (bed and bim and fam):
         return None
@@ -218,73 +329,112 @@ def _read_plink(d: Path):
     body = raw[3:]
     if len(body) != per * len(bims):
         return ("bad-length",)
-    # Decode to per-sample A1 dosage: 0b00 hom A1 -> 2, 0b10 het -> 1,
-    # 0b11 hom A2 -> 0, 0b01 missing -> None.
     code = {0: 2, 2: 1, 3: 0, 1: None}
     genos = []
     for i in range(len(bims)):
         chunk = body[i * per:(i + 1) * per]
-        row = []
-        for j in range(n):
-            row.append(code[(chunk[j // 4] >> (2 * (j % 4))) & 3])
-        genos.append(row)
+        genos.append([code[(chunk[j // 4] >> (2 * (j % 4))) & 3] for j in range(n)])
     return bims, fams, genos, bed + bim + fam
 
 
+def _plink_items(bim: Path, bed: Path, per: int):
+    """Yield (index, .bim fields, raw .bed bytes for the variant)."""
+    with open(bim) as fb, open(bed, "rb") as fd:
+        fd.read(3)
+        idx = 0
+        for line in fb:
+            if not line.strip():
+                continue
+            chunk = fd.read(per)
+            if len(chunk) != per:
+                raise _Mismatch("malformed .bed (bad-length)")
+            yield idx, line.split(), chunk
+            idx += 1
+
+
+def _dosage(chunk: bytes, n: int):
+    """Per-sample A1 dosage: 00 hom A1 -> 2, 10 het -> 1, 11 hom A2 -> 0,
+    01 missing -> -1."""
+    import numpy as np
+    a = np.frombuffer(chunk, dtype=np.uint8)
+    codes = np.stack([(a >> s) & 3 for s in (0, 2, 4, 6)], axis=1).reshape(-1)[:n]
+    return np.array([2, -1, 1, 0], dtype=np.int8)[codes]
+
+
+def _swap_dosage(x):
+    import numpy as np
+    return np.where(x < 0, x, 2 - x)
+
+
 def compare_t2(cand: Path, ref: Path, **_) -> Verdict:
-    c, r = _read_plink(cand), _read_plink(ref)
-    if c is None or r is None:
+    """T2 comparator. Streams the .bed files variant by variant."""
+    import numpy as np
+    cb, cm, cf = _files(cand, "*.bed"), _files(cand, "*.bim"), _files(cand, "*.fam")
+    rb, rm, rf = _files(ref, "*.bed"), _files(ref, "*.bim"), _files(ref, "*.fam")
+    if not (cb and cm and cf and rb and rm and rf):
         return _missing("PLINK .bed/.bim/.fam")
-    if len(c) == 1 or len(r) == 1:
-        return Verdict(DISAGREEMENT, f"malformed .bed ({c[0] if len(c) == 1 else r[0]})")
-    c_bim, c_fam, c_geno, c_files = c
-    r_bim, r_fam, r_geno, r_files = r
-    if _byte_equal(c_files, r_files):
+    c_fam = [l.split() for l in _data_lines(cf[0])]
+    r_fam = [l.split() for l in _data_lines(rf[0])]
+    n = len(c_fam)
+    per = (n + 3) // 4
+    for bed, bim, fam in ((cb[0], cm[0], c_fam), (rb[0], rm[0], r_fam)):
+        with open(bed, "rb") as fh:
+            if fh.read(3) != b"\x6c\x1b\x01":
+                return Verdict(DISAGREEMENT, "malformed .bed (bad-magic)")
+        p = (len(fam) + 3) // 4
+        if bed.stat().st_size - 3 != p * _count_data_lines([bim]):
+            return Verdict(DISAGREEMENT, "malformed .bed (bad-length)")
+    if _same_bytes(cb + cm + cf, rb + rm + rf):
         return Verdict(BYTE)
     conv = set()
     if [f[1] for f in c_fam] != [f[1] for f in r_fam]:
         return Verdict(DISAGREEMENT, "sample IDs or order differ in .fam")
     if [f[:2] for f in c_fam] != [f[:2] for f in r_fam]:
         conv.add("family-id")
-
-    r_index = _SiteIndex(r_bim, 0, 3, 4, 5)
-    order = []
-    for i, b in enumerate(c_bim):
-        j = r_index.take(b[0], b[3], b[4], b[5])
-        if j is None:
-            return Verdict(DISAGREEMENT, f"variant {b[0]}:{b[3]} absent in reference")
-        order.append(j)
-        rb = r_bim[j]
-        if b[0] != rb[0]:
-            conv.add("chrom-label")
-        if b[1] != rb[1]:
-            conv.add("variant-id")
-        ca, ra = (b[4], b[5]), (rb[4], rb[5])
-        cg, rg = c_geno[i], r_geno[j]
-        if ca == ra:
-            same = cg == rg
-        elif ca == (ra[1], ra[0]):
-            conv.add("allele-order")
-            same = [None if x is None else 2 - x for x in cg] == rg
-        elif "0" in ra and (ca[0] in ra or ca[1] in ra):
-            # Reference wrote a monomorphic site with A1 = '0'.
-            conv.add("monomorphic-allele-code")
-            if ca[1] == ra[1]:
-                same = cg == rg
+    key, loose = _site_key(0, 3, 4, 5)
+    idx_pairs = []
+    extra_snp = extra_other = 0
+    try:
+        for c, r in _pair_stream(_plink_items(cm[0], cb[0], per),
+                                 _plink_items(rm[0], rb[0], per), key, loose):
+            if r is None:
+                b = c[1]
+                return Verdict(DISAGREEMENT, f"variant {b[0]}:{b[3]} absent in reference")
+            if c is None:
+                rb_ = r[1]
+                if len(rb_[4]) == 1 and len(rb_[5]) == 1:
+                    extra_snp += 1
+                else:
+                    extra_other += 1
+                continue
+            (i, b, cg_raw), (j, rb_, rg_raw) = c, r
+            idx_pairs.append((i, j))
+            if b[0] != rb_[0]:
+                conv.add("chrom-label")
+            if b[1] != rb_[1]:
+                conv.add("variant-id")
+            ca, ra = (b[4], b[5]), (rb_[4], rb_[5])
+            cg, rg = _dosage(cg_raw, n), _dosage(rg_raw, n)
+            if ca == ra:
+                same = np.array_equal(cg, rg)
+            elif ca == (ra[1], ra[0]):
+                conv.add("allele-order")
+                same = np.array_equal(_swap_dosage(cg), rg)
+            elif "0" in ra and (ca[0] in ra or ca[1] in ra):
+                # Reference wrote a monomorphic site with A1 = '0'.
+                conv.add("monomorphic-allele-code")
+                same = np.array_equal(cg if ca[1] == ra[1] else _swap_dosage(cg), rg)
             else:
-                same = [None if x is None else 2 - x for x in cg] == rg
-        else:
-            return Verdict(DISAGREEMENT, f"alleles differ at {b[0]}:{b[3]}")
-        if not same:
-            return Verdict(DISAGREEMENT, f"genotypes differ at {b[0]}:{b[3]}")
-    extra = [r_bim[j] for j in range(len(r_bim)) if j not in r_index.used]
-    if extra:
-        non_snp = [b for b in extra if len(b[4]) != 1 or len(b[5]) != 1]
-        if len(non_snp) != len(extra):
-            return Verdict(DISAGREEMENT,
-                           f"{len(extra) - len(non_snp)} reference SNPs missing from candidate")
+                return Verdict(DISAGREEMENT, f"alleles differ at {b[0]}:{b[3]}")
+            if not same:
+                return Verdict(DISAGREEMENT, f"genotypes differ at {b[0]}:{b[3]}")
+    except _Mismatch as e:
+        return Verdict(DISAGREEMENT, str(e))
+    if extra_snp:
+        return Verdict(DISAGREEMENT, f"{extra_snp} reference SNPs missing from candidate")
+    if extra_other:
         conv.add("indels-excluded")
-    if order != sorted(order):
+    if not _in_order(idx_pairs):
         conv.add("site-order")
     return Verdict(STRUCTURAL, ", ".join(sorted(conv)) or "format", sorted(conv))
 

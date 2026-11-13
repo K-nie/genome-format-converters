@@ -17,6 +17,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The T1/T2 comparators pair records by chrom, position and allele set,
   so split multi-allelic sites (two biallelic records at one position, as in
   1000 Genomes phase 3) are no longer reported as disagreements.
+- The T1/T2 comparators stream both outputs site by site and buffer only
+  records that are out of step, so memory stays flat on whole chromosomes
+  (300k sites x 2,504 samples: 3.1 GB -> 57 MB for T1). Every task's
+  correctness check runs under `timeout` (GFC_BENCH_CORR_TIMEOUT, default
+  1 h) and logs each tool it checks.
 - The T8 reference-free check streams the VCF with numpy per site instead of
   holding every genotype in memory (about 20 GB on chr22). The T8
   reproducibility runs use the first 20,000 sites, log each step, and time

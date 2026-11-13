@@ -143,5 +143,9 @@ fi
 # the correct reference.
 
 echo "[done] T1 rows written to $out ($(wc -l < "$out") lines incl. header)" >&2
-python "$repo/benchmarks/check_correctness.py" --task T1 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T1 correctness check failed (non-fatal)" >&2
+# The correctness check must not hold the job: stop it after
+# GFC_BENCH_CORR_TIMEOUT seconds (default 1 h) where `timeout` exists.
+corr_to=()
+command -v timeout >/dev/null && corr_to=(timeout -k 60 "${GFC_BENCH_CORR_TIMEOUT:-3600}")
+${corr_to[@]+"${corr_to[@]}"} python "$repo/benchmarks/check_correctness.py" --task T1 --bench-dir "$bench_dir" --tsv "$out" 2>&1 | head -20 || echo "[warn] T1 correctness check failed (non-fatal)" >&2
 echo "[T1 trace] after check_correctness: $(wc -l < "$out") lines" >&2
