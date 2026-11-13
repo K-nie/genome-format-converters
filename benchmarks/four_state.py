@@ -270,20 +270,21 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
             return Verdict(DISAGREEMENT, "sample sets differ")
         return Verdict(DISAGREEMENT, "sample order differs")
     nc, nr = _count_data_lines(c_snp), _count_data_lines(r_snp)
-    if nc != nr:
-        return Verdict(DISAGREEMENT, f"site count {nc} vs reference {nr}")
     conv = set()
     key, loose = _site_key(1, 3, 4, 5)
     idx_pairs = []
+    # Sites present on one side only are collected (not a stop at the first)
+    # so the verdict names them: "site count" alone does not say which tool
+    # dropped what.
+    only_c: List[str] = []
+    only_r: List[str] = []
     try:
         for c, r in _pair_stream(_eig_items(c_snp, c_geno), _eig_items(r_snp, r_geno),
                                  key, loose):
-            if r is None:
-                s = c[1]
-                return Verdict(DISAGREEMENT, f"site {s[1]}:{s[3]} absent in reference")
-            if c is None:
-                rs = r[1]
-                return Verdict(DISAGREEMENT, f"reference site {rs[1]}:{rs[3]} absent in candidate")
+            if r is None or c is None:
+                f = (c or r)[1]
+                (only_r if c is None else only_c).append(f"{f[1]}:{f[3]} {f[4]}/{f[5]}")
+                continue
             (i, s, g), (j, rs, rg) = c, r
             idx_pairs.append((i, j))
             if s[1] != rs[1]:
@@ -305,6 +306,13 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
                 return Verdict(DISAGREEMENT, f"alleles differ at {s[1]}:{s[3]}")
     except _Mismatch as e:
         return Verdict(DISAGREEMENT, str(e))
+    if only_c or only_r:
+        bits = [f"site count {nc} vs reference {nr}"]
+        if only_c:
+            bits.append(f"{len(only_c)} only in candidate (e.g. {', '.join(only_c[:3])})")
+        if only_r:
+            bits.append(f"{len(only_r)} only in reference (e.g. {', '.join(only_r[:3])})")
+        return Verdict(DISAGREEMENT, "; ".join(bits))
     if not _in_order(idx_pairs):
         conv.add("site-order")
     return Verdict(STRUCTURAL, ", ".join(sorted(conv)) or "whitespace/format",
