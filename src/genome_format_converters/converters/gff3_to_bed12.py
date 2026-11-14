@@ -119,23 +119,25 @@ def _emit_bed12(
     )
 
 
+def _is_gene_type(ftype: str) -> bool:
+    return ftype == "gene" or ftype == "pseudogene" or ftype.endswith("_gene")
+
+
 def _convert_file(in_file: Path, out_file: Path) -> None:
-    # Maps:
-    #   transcripts[fid] = (rec_id, start1, end, strand, name, score)
-    #   exons_by_parent[pid] = list of (start1, end)
-    #   cds_by_parent[pid] = list of (start1, end)
-    #   gene_singleton[gid] = transcript-shaped tuple, used only when a
-    #       gene has no transcript children.
-    #   gene_has_transcript[gid] = True if any transcript declares this gene
-    #       as parent. We track this so we can decide at emit time whether
-    #       to emit the gene as a single-block row.
-    transcripts: Dict[str, Tuple[str, int, int, str, str, str]] = {}
-    transcript_order: List[str] = []
+    """One BED12 row per transcript.
+
+    A transcript is a feature of a known transcript type, or any feature
+    that is the direct Parent of an exon or CDS, whatever its type: Ensembl
+    uses pseudogenic_transcript, miRNA, unconfirmed_transcript,
+    V_gene_segment and others, and tRNAscan-SE hangs exons straight on tRNA
+    ``pseudogene`` rows (gffread follows the same rule). A gene-like row
+    with no transcript child is written as a single row of its own.
+    """
+    # feats[fid] = (ftype, rec_id, start1, end, strand, score, parent)
+    feats: Dict[str, Tuple[str, str, int, int, str, str, Optional[str]]] = {}
+    order: List[str] = []
     exons_by_parent: Dict[str, List[Tuple[int, int]]] = {}
     cds_by_parent: Dict[str, List[Tuple[int, int]]] = {}
-    gene_singleton: Dict[str, Tuple[str, int, int, str, str, str]] = {}
-    gene_order: List[str] = []
-    gene_has_transcript: Dict[str, bool] = {}
 
     with open(in_file, "r", encoding="utf-8") as in_handle:
         for line in in_handle:
@@ -160,75 +162,47 @@ def _convert_file(in_file: Path, out_file: Path) -> None:
             strand = _strand_char(cols[6])
             fid, parent, _ = _parse_attrs_min(cols[8])
 
-            if ftype == "gene":
-                if fid is not None:
-                    gene_singleton[fid] = (
-                        cols[0], start1, end, strand, fid,
-                        cols[5] if cols[5] != "." else "0",
-                    )
-                    if fid not in gene_has_transcript:
-                        gene_has_transcript[fid] = False
-                    gene_order.append(fid)
-                continue
-
-            if ftype in _TRANSCRIPT_TYPES:
-                if fid is not None:
-                    transcripts[fid] = (
-                        cols[0], start1, end, strand, fid,
-                        cols[5] if cols[5] != "." else "0",
-                    )
-                    transcript_order.append(fid)
+            if ftype == "exon" or ftype == "CDS":
                 if parent is not None:
-                    gene_has_transcript[parent] = True
+                    d = exons_by_parent if ftype == "exon" else cds_by_parent
+                    lst = d.get(parent)
+                    if lst is None:
+                        d[parent] = [(start1, end)]
+                    else:
+                        lst.append((start1, end))
                 continue
+            if fid is not None and fid not in feats:
+                feats[fid] = (ftype, cols[0], start1, end, strand,
+                              cols[5] if cols[5] != "." else "0", parent)
+                order.append(fid)
 
-            if ftype == "exon" and parent is not None:
-                lst = exons_by_parent.get(parent)
-                if lst is None:
-                    exons_by_parent[parent] = [(start1, end)]
-                else:
-                    lst.append((start1, end))
-                continue
+    def is_transcript(fid: str) -> bool:
+        ftype = feats[fid][0]
+        return ftype in _TRANSCRIPT_TYPES or fid in exons_by_parent or fid in cds_by_parent
 
-            if ftype == "CDS" and parent is not None:
-                lst = cds_by_parent.get(parent)
-                if lst is None:
-                    cds_by_parent[parent] = [(start1, end)]
-                else:
-                    lst.append((start1, end))
-                continue
+    tx_ids = [f for f in order if is_transcript(f)]
+    tx_set = set(tx_ids)
+    has_tx_child = {feats[t][6] for t in tx_ids if feats[t][6] is not None}
 
     with open(out_file, "w", encoding="utf-8") as out_handle:
         write = out_handle.write
-        # 1. Emit one BED12 per transcript, in encounter order.
-        for tid in transcript_order:
-            rec_id, start1, end, strand, name, score = transcripts[tid]
+        # 1. One BED12 per transcript, in encounter order.
+        for tid in tx_ids:
+            _ftype, rec_id, start1, end, strand, score, _parent = feats[tid]
             exons = exons_by_parent.get(tid, [])
             cdses = cds_by_parent.get(tid, [])
             if not exons and cdses:
-                # GFF3 inputs with only gene -> CDS (no exon child) - use
-                # CDS as the block list. This matches the bcbio-backed
-                # behaviour exactly.
+                # gene -> CDS without exon rows: the CDS parts are the blocks.
                 exons = list(cdses)
-            _emit_bed12(rec_id, start1, end, strand, name, score,
+            _emit_bed12(rec_id, start1, end, strand, tid, score,
                         exons, cdses, write)
 
-        # 2. Emit gene-level singletons for genes with no transcript children
-        #    (mirrors the recursive walker that fell through to ``gene``).
-        seen_gene = set()
-        for gid in gene_order:
-            if gid in seen_gene:
+        # 2. Gene-like rows with no transcript child, as one block each.
+        for gid in order:
+            ftype, rec_id, start1, end, strand, score, _parent = feats[gid]
+            if gid in tx_set or gid in has_tx_child or not _is_gene_type(ftype):
                 continue
-            seen_gene.add(gid)
-            if gene_has_transcript.get(gid):
-                continue
-            rec_id, start1, end, strand, name, score = gene_singleton[gid]
-            exons = exons_by_parent.get(gid, [])
-            cdses = cds_by_parent.get(gid, [])
-            if not exons and cdses:
-                exons = list(cdses)
-            _emit_bed12(rec_id, start1, end, strand, name, score,
-                        exons, cdses, write)
+            _emit_bed12(rec_id, start1, end, strand, gid, score, [], [], write)
 
 
 def batch_convert(input_dir: str, output_dir: str,

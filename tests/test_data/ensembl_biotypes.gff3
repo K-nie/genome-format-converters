@@ -1,0 +1,23 @@
+##gff-version 3
+##sequence-region   22 1 1000000
+22	ensembl	gene	100	900	.	+	.	ID=gene:G1;Name=A;biotype=protein_coding
+22	ensembl	mRNA	100	900	.	+	.	ID=transcript:T1;Parent=gene:G1;biotype=protein_coding
+22	ensembl	exon	100	300	.	+	.	Parent=transcript:T1;Name=E1
+22	ensembl	CDS	150	300	.	+	0	ID=CDS:P1;Parent=transcript:T1
+22	ensembl	exon	500	900	.	+	.	Parent=transcript:T1
+22	ensembl	CDS	500	800	.	+	0	ID=CDS:P1;Parent=transcript:T1
+22	ensembl	five_prime_UTR	100	149	.	+	.	Parent=transcript:T1
+22	ensembl	ncRNA_gene	2000	2500	.	-	.	ID=gene:G2;biotype=lncRNA
+22	ensembl	lnc_RNA	2000	2500	.	-	.	ID=transcript:T2;Parent=gene:G2
+22	ensembl	exon	2000	2500	.	-	.	Parent=transcript:T2
+22	ensembl	pseudogene	3000	3500	.	+	.	ID=gene:G3;biotype=processed_pseudogene
+22	ensembl	pseudogenic_transcript	3000	3500	.	+	.	ID=transcript:T3;Parent=gene:G3
+22	ensembl	exon	3000	3500	.	+	.	Parent=transcript:T3
+22	ensembl	ncRNA_gene	4000	4100	.	+	.	ID=gene:G4
+22	ensembl	miRNA	4000	4100	.	+	.	ID=transcript:T4;Parent=gene:G4
+22	ensembl	exon	4000	4100	.	+	.	Parent=transcript:T4
+22	ensembl	gene	5000	5600	.	+	.	ID=gene:G5
+22	ensembl	V_gene_segment	5000	5600	.	+	.	ID=transcript:T5;Parent=gene:G5
+22	ensembl	exon	5000	5600	.	+	.	Parent=transcript:T5
+22	ensembl	unconfirmed_transcript	5000	5600	.	+	.	ID=transcript:T6;Parent=gene:G5
+22	ensembl	exon	5000	5300	.	+	.	Parent=transcript:T6

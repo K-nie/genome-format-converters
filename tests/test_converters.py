@@ -437,3 +437,35 @@ def test_vcf_to_plink(tmp_path):
     assert len(fam) == 2
     assert fam[0].split()[1] == "sample1"
     assert fam[1].split()[1] == "sample2"
+
+
+# Ensembl and tRNAscan-SE hang exons on many feature types besides mRNA
+# (pseudogenic_transcript, miRNA, V_gene_segment, unconfirmed_transcript,
+# tRNA pseudogene rows). Each must come out as its own transcript.
+_ENS_TX = {f"transcript:T{i}" for i in range(1, 7)}
+
+
+def _ens_dir(tmp_path):
+    d = tmp_path / "ens"
+    d.mkdir()
+    shutil.copy(FIXTURES / "ensembl_biotypes.gff3", d / "e.gff3")
+    return d
+
+
+def test_gff3_to_gtf_every_exon_parent_is_a_transcript(tmp_path):
+    out = tmp_path / "gtf"
+    gff3_to_gtf.batch_convert(str(_ens_dir(tmp_path)), str(out))
+    exon_tx = set()
+    for line in (out / "e.gtf").read_text().splitlines():
+        c = line.split("\t")
+        if c[2] == "exon":
+            assert 'transcript_id "' in c[8], line
+            exon_tx.add(c[8].split('transcript_id "')[1].split('"')[0])
+    assert exon_tx == _ENS_TX
+
+
+def test_gff3_to_bed12_every_exon_parent_is_a_transcript(tmp_path):
+    out = tmp_path / "bed"
+    gff3_to_bed12.batch_convert(str(_ens_dir(tmp_path)), str(out))
+    names = [r.split("\t")[3] for r in (out / "e.bed12").read_text().splitlines()]
+    assert sorted(names) == sorted(_ENS_TX)

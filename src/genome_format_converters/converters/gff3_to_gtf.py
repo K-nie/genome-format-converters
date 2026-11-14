@@ -33,6 +33,21 @@ _TRANSCRIPT_TYPES = frozenset({
     "tRNA", "rRNA", "snoRNA", "snRNA",
 })
 
+# Rows that belong to a transcript. Whatever feature is the direct Parent
+# of one of these is that transcript, whatever its type: Ensembl uses
+# pseudogenic_transcript, miRNA, unconfirmed_transcript, V_gene_segment and
+# others, and tRNAscan-SE hangs exons directly on tRNA *pseudogene* rows.
+# gffread follows the same rule.
+_SUBFEATURE_TYPES = frozenset({
+    "exon", "CDS", "five_prime_UTR", "three_prime_UTR", "UTR",
+    "start_codon", "stop_codon",
+})
+
+
+def _is_gene_type(ftype: Optional[str]) -> bool:
+    return ftype is not None and (
+        ftype == "gene" or ftype == "pseudogene" or ftype.endswith("_gene"))
+
 
 def _parse_attrs_min(attr_field: str) -> Tuple[Optional[str], Optional[str]]:
     """Extract just (ID, Parent) from a GFF3 column-9 string.
@@ -78,6 +93,7 @@ def _resolve_gene_transcript(
     parent: Optional[str],
     id_to_type: Dict[str, str],
     id_to_parent: Dict[str, Optional[str]],
+    exon_parents: frozenset = frozenset(),
 ) -> Tuple[Optional[str], Optional[str]]:
     """Walk the Parent chain to find ``gene_id`` and ``transcript_id``.
 
@@ -87,16 +103,20 @@ def _resolve_gene_transcript(
     gene_id: Optional[str] = None
     transcript_id: Optional[str] = None
 
-    if ftype == "gene":
-        return fid, None
-    if ftype in _TRANSCRIPT_TYPES:
+    def is_tx(i: Optional[str]) -> bool:
+        return i is not None and (id_to_type.get(i) in _TRANSCRIPT_TYPES
+                                  or i in exon_parents)
+
+    if ftype not in _SUBFEATURE_TYPES and (ftype in _TRANSCRIPT_TYPES or fid in exon_parents):
         transcript_id = fid
         # gene is the parent if it's a gene; else the row itself acts as gene.
-        if parent and id_to_type.get(parent) == "gene":
+        if parent and _is_gene_type(id_to_type.get(parent)) and not is_tx(parent):
             gene_id = parent
         else:
             gene_id = parent or fid
         return gene_id, transcript_id
+    if _is_gene_type(ftype) or ftype == "gene":
+        return fid, None
 
     # Non-transcript, non-gene row (exon, CDS, UTR, ...). Climb the chain.
     cur = parent
@@ -109,9 +129,9 @@ def _resolve_gene_transcript(
             if transcript_id is None:
                 transcript_id = cur
             break
-        if ctype in _TRANSCRIPT_TYPES and transcript_id is None:
+        if transcript_id is None and is_tx(cur):
             transcript_id = cur
-        if ctype == "gene":
+        elif _is_gene_type(ctype):
             gene_id = cur
             break
         cur = id_to_parent.get(cur)
@@ -131,6 +151,7 @@ def _convert_file(in_file: Path, out_file: Path) -> None:
     # missing parents so a single ``.get`` answers both "exists" and "is root".
     id_to_type: Dict[str, str] = {}
     id_to_parent: Dict[str, Optional[str]] = {}
+    exon_parent_set = set()
 
     with open(in_file, "r", encoding="utf-8") as in_handle:
         for line in in_handle:
@@ -151,6 +172,9 @@ def _convert_file(in_file: Path, out_file: Path) -> None:
             if fid is not None:
                 id_to_type[fid] = ftype
                 id_to_parent[fid] = parent
+            if parent is not None and ftype in _SUBFEATURE_TYPES:
+                exon_parent_set.add(parent)
+    exon_parents = frozenset(exon_parent_set)
 
     # ---- Pass 2: stream-rewrite each row's column 9. -----------------------
     # We build a small attr buffer per row and write into a buffered text
@@ -181,7 +205,7 @@ def _convert_file(in_file: Path, out_file: Path) -> None:
             ftype = cols[2]
             fid, parent = _parse(cols[8])
             gene_id, transcript_id = _resolve(
-                fid, ftype, parent, id_to_type, id_to_parent
+                fid, ftype, parent, id_to_type, id_to_parent, exon_parents
             )
 
             # Ensembl/GTF attribute string. Always emit gene_id; emit
