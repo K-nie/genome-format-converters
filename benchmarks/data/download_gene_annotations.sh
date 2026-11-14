@@ -16,7 +16,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 rel="${GFC_BENCH_ENSEMBL_RELEASE:-112}"
 base="https://ftp.ensembl.org/pub/release-${rel}/gff3"
 
-fetch() {  # fetch <url> <dest.gff3>
+fetch() {  # fetch <url> <dest>
     local url="$1" dest="$2"
     if [[ -s "$dest" ]]; then
         echo "[skip] $dest already present" >&2
@@ -30,6 +30,10 @@ fetch() {  # fetch <url> <dest.gff3>
 
 fetch "$base/saccharomyces_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.${rel}.gff3.gz" \
       "$here/annotations/sc_r64/Saccharomyces_cerevisiae.R64-1-1.${rel}.gff3"
+# Genome FASTA for T3 (FASTA + GFF3 -> GenBank). Same stem as the GFF3 so
+# every tool pairs the two files by name.
+fetch "https://ftp.ensembl.org/pub/release-${rel}/fasta/saccharomyces_cerevisiae/dna/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa.gz" \
+      "$here/annotations/sc_r64/Saccharomyces_cerevisiae.R64-1-1.${rel}.fasta"
 fetch "$base/homo_sapiens/Homo_sapiens.GRCh38.${rel}.chromosome.22.gff3.gz" \
       "$here/annotations/hs_chr22/Homo_sapiens.GRCh38.${rel}.chromosome.22.gff3"
 

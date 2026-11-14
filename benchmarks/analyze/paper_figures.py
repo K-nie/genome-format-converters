@@ -385,7 +385,7 @@ def fig_correctness(verd: pd.DataFrame, out: Path) -> None:
 _CONV = re.compile(r"\b(chrom-label|allele-order|attribute-format|gene-rows|exon-fusion|"
                    r"itemRgb|row-order|score|number-format|record-order|"
                    r"stochastic-draw|rendering|reference-drops-colocated|indels-excluded|"
-                   r"site-order|monomorphic-allele-code)\b")
+                   r"site-order|monomorphic-allele-code|id-prefix|thick-span-noncoding|name-attribute|reference-omits-children)\b")
 
 
 def load_verdicts(phase_dirs: dict) -> pd.DataFrame:

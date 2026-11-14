@@ -395,6 +395,16 @@ def bed_block_size(d):
     _bed_edit(d, f)
 
 
+def bed_rename_one(d):
+    """One row gets another name; coordinates unchanged."""
+    f = next(d.glob("*.bed*"))
+    rows = f.read_text().splitlines()
+    c = rows[0].split("\t")
+    c[3] = c[3] + "_renamed"
+    rows[0] = "\t".join(c)
+    f.write_text("\n".join(rows) + "\n")
+
+
 def bed_strand(d):
     _bed_edit(d, lambda r: r.__setitem__(5, "-" if r[5] == "+" else "+"))
 
@@ -639,7 +649,8 @@ def run(work: Path) -> List[Case]:
 
     gfc("gff3-to-bed12", "--input-dir", str(ann), "--output-dir", str(work / "t5"), "--force")
     suite("T5", work / "t5", [bed_score_and_order],
-          [bed_start_off_by_one, bed_block_size, bed_strand, bed_thick])
+          [bed_start_off_by_one, bed_block_size, bed_strand, bed_thick,
+           bed_rename_one])
 
     gb_in = inp / "gb"
     gb_in.mkdir()

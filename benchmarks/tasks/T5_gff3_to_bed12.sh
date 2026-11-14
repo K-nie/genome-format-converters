@@ -58,7 +58,7 @@ if command -v gff3ToGenePred >/dev/null 2>&1 && command -v genePredToBed >/dev/n
             --replicate "$rep" \
             --cmd "for f in '$GFC_BENCH_INPUT_DIR'/*.gff3; do \
                       stem=\$(basename \"\$f\" .gff3); \
-                      gff3ToGenePred \"\$f\" '$out_dir/'\$stem.gp \
+                      gff3ToGenePred -processAllGeneChildren -allowMinimalGenes \"\$f\" '$out_dir/'\$stem.gp \
                         && genePredToBed '$out_dir/'\$stem.gp '$out_dir/'\$stem.bed; \
                    done; true" \
             --notes "gff3ToGenePred + genePredToBed chain" \

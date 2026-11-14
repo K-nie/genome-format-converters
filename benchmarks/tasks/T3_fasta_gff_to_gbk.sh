@@ -9,16 +9,24 @@ task="T3_fasta_gff_to_gbk"
 out="${GFC_BENCH_RAW_DIR:-$repo/benchmarks/results/raw}/${task}.tsv"
 mkdir -p "$(dirname "$out")"
 
-# Stage 1: prefer the committed Y1000+ tRNA-scan slice over the tiny
-# fixture when present, regardless of what run_on_condor.sh exported into
-# GFC_BENCH_INPUT_DIR (which it sets to the 1kg VCF dir for T1/T2/T8).
-y1000_dir="$repo/benchmarks/data/y1000plus"
-if compgen -G "$y1000_dir/*.fasta" >/dev/null 2>&1; then
-    GFC_BENCH_INPUT_DIR="$y1000_dir"
-    notes_default="20-species Y1000+ tRNA-scan slice"
+# T3 needs a genome FASTA whose sequence IDs are the GFF3 seqids. The
+# Y1000+ slice does not qualify: its FASTA holds the tRNA sequences while its
+# GFF3 places them on contigs that are not in the FASTA, so every tool was
+# asked to annotate sequences it did not have (13 Nov rerun: py-ref wrote 358
+# GenBank records with no sequence). Use S. cerevisiae R64 (Ensembl genome
+# FASTA + GFF3, from data/download_gene_annotations.sh) and fall back to the
+# tiny fixture. GFC_BENCH_T3_DIR overrides; GFC_BENCH_INPUT_DIR is ignored
+# because run_paper_rerun.sh points it at the chr22 VCF.
+sc_dir="$repo/benchmarks/data/annotations/sc_r64"
+if [[ -n "${GFC_BENCH_T3_DIR:-}" ]]; then
+    GFC_BENCH_INPUT_DIR="$GFC_BENCH_T3_DIR"
+    notes_default="$(basename "$GFC_BENCH_T3_DIR")"
+elif compgen -G "$sc_dir/*.fasta" >/dev/null 2>&1; then
+    GFC_BENCH_INPUT_DIR="$sc_dir"
+    notes_default="S. cerevisiae R64-1-1 genome + Ensembl GFF3"
 else
-    GFC_BENCH_INPUT_DIR="${GFC_BENCH_INPUT_DIR:-$repo/tests/test_data}"
-    notes_default="tiny fixture (no Y1000+ slice present)"
+    GFC_BENCH_INPUT_DIR="$repo/tests/test_data"
+    notes_default="tiny fixture (no sc_r64 genome present)"
 fi
 : "${GFC_BENCH_REPLICATES:=5}"
 

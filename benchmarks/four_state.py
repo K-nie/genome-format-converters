@@ -499,19 +499,37 @@ def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
                 recs[rec.id] = (str(rec.seq).upper(), feats)
         return recs
 
+    # Load each side on its own so the verdict says whose file is broken.
     try:
-        c, r = load(c_files), load(r_files)
+        r = load(r_files)
+    except Exception as exc:
+        return Verdict(LIMITATION, f"reference GenBank unreadable: {exc}")
+    try:
+        c = load(c_files)
     except Exception as exc:  # unparsable GenBank is a defect, not a convention
         return Verdict(DISAGREEMENT, f"GenBank parse error: {exc}")
     if set(c) != set(r):
         return Verdict(DISAGREEMENT, "record IDs differ")
+    # Biopython's GenBank writer drops sub_features, so a BCBio-based
+    # reference keeps only top-level features (tRNA, gene) while gfc and
+    # seqret also write the child exon/mRNA/CDS rows. Feature types the
+    # reference never writes are reported, not judged; every feature type
+    # the reference does write must match exactly.
+    r_types = {t for rid in r for (t, _loc) in r[rid][1]}
+    c_types = {t for rid in c for (t, _loc) in c[rid][1]}
+    extra_types = sorted(c_types - r_types)
     for rid in c:
         if c[rid][0] != r[rid][0]:
             return Verdict(DISAGREEMENT, f"sequence differs in {rid}")
-        if c[rid][1] != r[rid][1]:
+        cf = Counter({k: v for k, v in c[rid][1].items() if k[0] in r_types})
+        if cf != r[rid][1]:
             return Verdict(DISAGREEMENT, f"feature set differs in {rid}")
-    return Verdict(STRUCTURAL, "rendering (line wrap, qualifier order)",
-                   ["rendering"])
+    conv = ["rendering"]
+    reason = "rendering (line wrap, qualifier order)"
+    if extra_types:
+        conv.append("reference-omits-children")
+        reason += f"; reference writes no {', '.join(extra_types)} features (not checked)"
+    return Verdict(STRUCTURAL, reason, sorted(conv))
 
 
 # ------------------------------------------------- T4 GFF3 -> GTF
@@ -548,6 +566,31 @@ def _gtf_model(files: Sequence[Path]):
     return tx
 
 
+_ID_PREFIX = re.compile(r"^(?:transcript|gene|mRNA|rna|CDS|exon):")
+
+
+def _set_diff_reason(what: str, c: set, r: set) -> str:
+    only_c, only_r = sorted(c - r), sorted(r - c)
+    bits = [f"{what} differ"]
+    if only_c:
+        bits.append(f"{len(only_c)} only in candidate (e.g. {only_c[:3]})")
+    if only_r:
+        bits.append(f"{len(only_r)} only in reference (e.g. {only_r[:3]})")
+    return "; ".join(bits)
+
+
+def _strip_prefix_keys(d: dict) -> Optional[dict]:
+    """Re-key by ID without an Ensembl type prefix ('transcript:ENST...' ->
+    'ENST...'); None if that would merge two keys."""
+    out = {}
+    for k, v in d.items():
+        k2 = _ID_PREFIX.sub("", k)
+        if k2 in out:
+            return None
+        out[k2] = v
+    return out
+
+
 def compare_t4(cand: Path, ref: Path, **_) -> Verdict:
     c_files, r_files = _files(cand, "*.gtf"), _files(ref, "*.gtf")
     if not c_files or not r_files:
@@ -562,8 +605,12 @@ def compare_t4(cand: Path, ref: Path, **_) -> Verdict:
         conv.add("gene-rows")
     c, r = _gtf_model(c_files), _gtf_model(r_files)
     if set(c) != set(r):
-        missing = sorted(set(r) ^ set(c))[:3]
-        return Verdict(DISAGREEMENT, f"transcript sets differ (e.g. {missing})")
+        c2, r2 = _strip_prefix_keys(c), _strip_prefix_keys(r)
+        if c2 is not None and r2 is not None and set(c2) == set(r2):
+            conv.add("id-prefix")
+            c, r = c2, r2
+        else:
+            return Verdict(DISAGREEMENT, _set_diff_reason("transcript sets", set(c), set(r)))
     for tid in c:
         a, b = c[tid], r[tid]
         if (a["chrom"], a["strand"]) != (b["chrom"], b["strand"]):
@@ -616,7 +663,25 @@ def compare_t5(cand: Path, ref: Path, **_) -> Verdict:
     for row in r:
         r_by.setdefault(row[3] if len(row) > 3 else key(row), row)
     if set(c_by) != set(r_by):
-        return Verdict(DISAGREEMENT, "feature names differ")
+        c2, r2 = _strip_prefix_keys(c_by), _strip_prefix_keys(r_by)
+        if c2 is not None and r2 is not None and set(c2) == set(r2):
+            conv.add("id-prefix")
+            c_by, r_by = c2, r2
+        else:
+            # Tools differ in which attribute names a row (ID vs Name);
+            # match rows on coordinates and blocks instead.
+            ck = Counter(key(row) for row in c)
+            rk = Counter(key(row) for row in r)
+            # Only when the naming differs throughout: one renamed row in an
+            # otherwise matching file is a defect, not a convention.
+            unnamed = len(set(c_by) - set(r_by)) / max(len(c_by), 1)
+            if ck == rk and max(ck.values()) == 1 and unnamed >= 0.9:
+                conv.add("name-attribute")
+                c_by = {key(row): row for row in c}
+                r_by = {key(row): row for row in r}
+            else:
+                return Verdict(DISAGREEMENT,
+                               _set_diff_reason("feature names", set(c_by), set(r_by)))
     for name, row in c_by.items():
         rr = r_by[name]
         if key(row) != key(rr):
@@ -630,7 +695,10 @@ def compare_t5(cand: Path, ref: Path, **_) -> Verdict:
             conv.add("score")
         if len(row) > 8 and row[8] != rr[8]:
             conv.add("itemRgb")
-    if [r_[3] for r_ in c] != [r_[3] for r_ in r]:
+    if "name-attribute" in conv:
+        if [key(x) for x in c] != [key(x) for x in r]:
+            conv.add("row-order")
+    elif [_ID_PREFIX.sub("", r_[3]) for r_ in c] != [_ID_PREFIX.sub("", r_[3]) for r_ in r]:
         conv.add("row-order")
     return Verdict(STRUCTURAL, ", ".join(sorted(conv)) or "format", sorted(conv))
 
