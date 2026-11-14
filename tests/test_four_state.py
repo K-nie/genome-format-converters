@@ -151,3 +151,27 @@ def test_t8_reproducibility_with_threads_over_symlinks(dup_vcf, tmp_path):
     assert res.returncode == 0, res.stderr
     rows = list(csv.DictReader((tmp_path / "r.tsv").open(), delimiter="\t"))
     assert all(r["pass"] == "yes" for r in rows), rows
+
+
+def test_t1_reference_that_drops_a_colocated_record(dup_vcf, tmp_path):
+    """convertf keeps one record per position (seen at chr22:43236421)."""
+    out = tmp_path / "eig"
+    mutation_test.gfc("vcf-to-eigenstrat", "--input-dir", str(dup_vcf),
+                      "--output-dir", str(out), "--force")
+    ref = tmp_path / "ref"
+    shutil.copytree(out, ref)
+    for ext in ("snp", "geno"):
+        f = next(ref.glob("*." + ext))
+        rows = f.read_text().splitlines()
+        del rows[2]  # the second record at 22:200
+        f.write_text("\n".join(rows) + "\n")
+    v = fs.compare_t1(out, ref)
+    assert v.state == fs.STRUCTURAL, v.reason
+    assert "reference-drops-colocated" in v.conventions
+    # A candidate site with no reference record at that position is still wrong.
+    for ext in ("snp", "geno"):
+        f = next(ref.glob("*." + ext))
+        rows = f.read_text().splitlines()
+        del rows[0]
+        f.write_text("\n".join(rows) + "\n")
+    assert fs.compare_t1(out, ref).state == fs.DISAGREEMENT

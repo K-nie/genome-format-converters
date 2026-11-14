@@ -306,6 +306,30 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
                 return Verdict(DISAGREEMENT, f"alleles differ at {s[1]}:{s[3]}")
     except _Mismatch as e:
         return Verdict(DISAGREEMENT, str(e))
+    if only_c and not only_r:
+        # EIGENSOFT convertf keeps one record per position: of two biallelic
+        # records at one site (a split multi-allelic, e.g. 1000 Genomes
+        # chr22:43236421 G>A and G>T) it silently drops the second. A
+        # candidate site counts as such a record when the reference has a
+        # different record at the same position; that is a reference
+        # limitation, not a candidate error.
+        positions = {(_norm_chrom(x.split(":")[0]), int(x.split(":")[1].split()[0]))
+                     for x in only_c}
+        ref_pos = set()
+        for f in r_snp:
+            with open(f) as fh:
+                for line in fh:
+                    t = line.split()
+                    if len(t) > 3 and (_norm_chrom(t[1]), int(t[3])) in positions:
+                        ref_pos.add((_norm_chrom(t[1]), int(t[3])))
+        if ref_pos == positions:
+            conv.add("reference-drops-colocated")
+            if not _in_order(idx_pairs):
+                conv.add("site-order")
+            return Verdict(STRUCTURAL,
+                           f"reference keeps one record per position; {len(only_c)} "
+                           f"co-located record(s) only in candidate (e.g. "
+                           f"{', '.join(only_c[:3])})", sorted(conv))
     if only_c or only_r:
         bits = [f"site count {nc} vs reference {nr}"]
         if only_c:
