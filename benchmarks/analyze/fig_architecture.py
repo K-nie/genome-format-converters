@@ -46,165 +46,141 @@ plt.rcParams.update({"font.size": 7, "text.color": INK,
                      "pdf.fonttype": 42, "ps.fonttype": 42})
 
 # (family, backend line, subcommands)
+# (family, parsing backend, example subcommands, count)
 FAMILIES = [
-    ("Sequences, alignments, trees",
-     "Biopython SeqIO / AlignIO / Phylo",
-     "fasta\u2194fastq, fasta+qual\u2194fastq, fasta-to-table, convert-alignment,\n"
-     "stockholm\u2194fasta, maf-to-xmfa, tree-convert, annotate-tree"),
-    ("Annotation, streaming",
-     "line parser, two passes,\nno object model",
-     "gff3-to-gtf, gff3-to-bed12, gtf-to-gff3"),
-    ("Annotation, feature model",
-     "BCBio.GFF, or a GFF3 reader,\n+ Biopython SeqFeature",
-     "gff3-to-bed, gff3-to-table, gff3-to-protein,\ngenbank-to-gff3, fasta-gff-to-gbk"),
-    ("Reads and variant tables",
-     "pysam (htslib)",
-     "bam-to-bed, vcf-to-bed, vcf-to-table,\nvcf-to-consensus, eigenstrat-to-vcf"),
-    ("Population-genetics VCF",
-     "numpy GT decode of VCF text;\ncyvcf2 for BCF and odd records",
-     "vcf-to-eigenstrat, vcf-to-pseudohaploid,\nvcf-to-plink, vcf-to-snp-alignment"),
-    ("Tool-output tables",
-     "Python standard library only",
-     "blast-to-links, delta-to-tab,\nhmmer-tblout-to-tsv, orthogroups-to-fasta"),
+    ("Sequences,\nalignments, trees", "Biopython\nSeqIO / AlignIO / Phylo",
+     "fasta-to-fastq\nconvert-alignment\ntree-convert", 11),
+    ("Annotation,\nstreaming", "two-pass line\nparser",
+     "gff3-to-gtf\ngff3-to-bed12\ngtf-to-gff3", 3),
+    ("Annotation,\nfeature model", "BCBio.GFF +\nBiopython SeqFeature",
+     "gff3-to-protein\ngenbank-to-gff3\nfasta-gff-to-gbk", 5),
+    ("Reads and\nvariant tables", "pysam\n(htslib)",
+     "bam-to-bed\nvcf-to-table\nvcf-to-consensus", 5),
+    ("Population-\ngenetics VCF", "numpy GT decode;\ncyvcf2 fallback",
+     "vcf-to-eigenstrat\nvcf-to-pseudohaploid\nvcf-to-plink", 4),
+    ("Tool-output\ntables", "Python standard\nlibrary",
+     "blast-to-links\nhmmer-tblout-to-tsv\northogroups-to-fasta", 4),
 ]
-COUNTS = [11, 3, 5, 5, 4, 4]
-assert sum(COUNTS) == 32
+assert sum(f[3] for f in FAMILIES) == 32
+
+# Axes units are inches at print size; y is measured down from the top.
+W, H = 7.2, 5.47
 
 
-# Axes units are inches (the figure is drawn at its print size), and y is
-# measured down from the top edge, so text sizes and box sizes can be checked
-# against each other directly.
-W, H = 7.2, 6.72
+def Y(t):
+    return H - t
 
 
-def box(ax, x, t, w, h, fc=BOX, ec=GRID, lw=0.6, r=0.06, ls="-", z=0):
-    ax.add_patch(FancyBboxPatch((x, H - t - h), w, h, fc=fc, ec=ec, lw=lw,
-                                ls=ls, boxstyle=f"round,pad=0,rounding_size={r}",
+def box(ax, x, t, w, h, fc="white", ec=GRID, lw=0.7, r=0.06, ls="-", z=1):
+    ax.add_patch(FancyBboxPatch((x, Y(t) - h), w, h, fc=fc, ec=ec, lw=lw, ls=ls,
+                                boxstyle=f"round,pad=0,rounding_size={r}",
                                 zorder=z))
 
 
 def txt(ax, x, t, s, size=6.0, color=INK, mono=False, bold=False,
-        ha="left", va="top", z=3):
-    ax.text(x, H - t, s, ha=ha, va=va, fontsize=size, color=color,
+        ha="center", va="center", z=3, style=None):
+    ax.text(x, Y(t), s, ha=ha, va=va, fontsize=size, color=color,
             family=MONO if mono else None, fontweight="bold" if bold else None,
-            linespacing=1.3, zorder=z)
+            linespacing=1.25, zorder=z, style=style)
 
 
-def arrow(ax, p, q, color=INK, lw=0.9, ls="-"):
-    ax.add_patch(FancyArrowPatch((p[0], H - p[1]), (q[0], H - q[1]),
-                                 arrowstyle="-|>", mutation_scale=8, lw=lw,
-                                 color=color, ls=ls, zorder=4,
-                                 shrinkA=0, shrinkB=0))
+def arrow(ax, p, q, color=INK_2, lw=1.0, ls="-", conn="arc3", label=None,
+          lpos=None, lha="left"):
+    ax.add_patch(FancyArrowPatch((p[0], Y(p[1])), (q[0], Y(q[1])),
+                                 arrowstyle="-|>", mutation_scale=9, lw=lw,
+                                 color=color, ls=ls, zorder=2, shrinkA=0,
+                                 shrinkB=0, connectionstyle=conn))
+    if label:
+        lx, lt = lpos
+        txt(ax, lx, lt, label, size=5.6, color=INK_2, ha=lha, style="italic")
 
 
-def title(ax, x, t, step, text):
-    txt(ax, x, t, step, size=7.5, color=GFC, bold=True)
-    txt(ax, x + 0.15, t, text, size=7.5, bold=True)
+def stage(ax, x, t, w, h, head, body, accent=False):
+    box(ax, x, t, w, h, fc=GFC_BG if accent else "white",
+        ec=GFC if accent else GRID, lw=0.8 if accent else 0.7)
+    txt(ax, x + w / 2, t + 0.17, head, size=6.8, bold=True)
+    txt(ax, x + w / 2, t + 0.19 + (h - 0.2) / 2, body, size=5.7, color=INK_2)
 
 
 def draw(ax) -> None:
     ax.set_axis_off()
-    pad = 0.1
+    cx = 3.0                      # centre line of the main flow
+    mw = 3.0                      # main-flow box width
+    mx = cx - mw / 2
 
-    # 1  command line ---------------------------------------------------
-    x1, t1, w1, h1 = 0.0, 0.0, 3.6, 1.55
-    box(ax, x1, t1, w1, h1)
-    title(ax, x1 + pad, t1 + pad, "1", "Command line")
-    txt(ax, x1 + 1.55, t1 + pad + 0.01, "gfc <subcommand> ...", size=6.2, mono=True)
-    modes = [
-        ("Single file", "one-file batch, renamed to O", "--input F --output O"),
-        ("Batch", "every matching file in D", "--input-dir D --output-dir O\n[--pattern G]"),
-        ("Parallel batch", "one worker per file (see 5)", "... --threads N"),
-    ]
-    t = t1 + 0.38
-    for name, note, flags in modes:
-        box(ax, x1 + pad, t, w1 - 2 * pad, 0.36, fc="white", ec=GRID, r=0.04, z=1)
-        txt(ax, x1 + 0.18, t + 0.05, name, size=6.2, bold=True)
-        txt(ax, x1 + 0.18, t + 0.19, note, size=5.6, color=INK_2)
-        txt(ax, x1 + 1.75, t + 0.05, flags, size=5.6, mono=True, color=GFC)
-        t += 0.39
+    # input files
+    t_in = 0.0
+    for k in range(3):            # a small stack of file cards
+        box(ax, cx - 0.62 + 0.05 * k, t_in + 0.05 * (2 - k), 1.24, 0.42,
+            fc="white", ec=INK_2, lw=0.6, r=0.04, z=1 + k)
+    txt(ax, cx + 0.05, t_in + 0.2, "Input file or directory", size=6.6, bold=True, z=6)
+    txt(ax, cx + 0.05, t_in + 0.36, "FASTA, GFF3, VCF, BAM, ...", size=5.6,
+        color=INK_2, z=6)
 
-    # 2  dispatch -------------------------------------------------------
-    x2, t2, w2, h2 = 3.85, 0.0, 3.35, 1.55
-    box(ax, x2, t2, w2, h2)
-    title(ax, x2 + pad, t2 + pad, "2", "Dispatch (cli.py)")
-    steps = [
-        ("argparse", "32 subcommands with shared I/O and batch flags"),
-        ("lazy import", "loads only the chosen converter and its libraries"),
-        ("batch_convert", "(in_dir, out_dir, <options>, force, pattern)"),
-    ]
-    t = t2 + 0.38
-    for i, (head, body) in enumerate(steps):
-        box(ax, x2 + pad, t, w2 - 2 * pad, 0.36, fc="white", ec=GRID, r=0.04, z=1)
-        txt(ax, x2 + 0.18, t + 0.05, head, size=6.0, mono=True, color=GFC)
-        txt(ax, x2 + 0.18, t + 0.2, body, size=5.6, color=INK_2,
-            mono=head == "batch_convert")
-        t += 0.39
-    arrow(ax, (x1 + w1 + 0.02, 0.8), (x2 - 0.02, 0.8))
+    # command line
+    t_cli, h_cli = 0.85, 0.62
+    arrow(ax, (cx, t_in + 0.53), (cx, t_cli))
+    stage(ax, mx, t_cli, mw, h_cli, "gfc <subcommand>",
+          "argparse: 32 subcommands\n"
+          "--input F --output O  or  --input-dir D --output-dir O")
 
-    # 3  per-file conversion ----------------------------------------------
-    x3, t3, w3 = 0.0, 1.8, W
-    rh, rgap = 0.33, 0.04
-    h3 = 0.72 + len(FAMILIES) * (rh + rgap) + 0.42
-    box(ax, x3, t3, w3, h3, fc=GFC_BG, ec=GFC, lw=0.7)
-    title(ax, x3 + pad, t3 + pad, "3", "Per-file conversion: one converter module, one parsing backend")
-    txt(ax, x3 + pad, t3 + 0.33,
-        "for f in iter_input_files(in_dir, exts, pattern):  # sorted\n"
-        "    _convert_file(f, out_dir / (stem(f) + ext))", size=5.6, mono=True)
-    arrow(ax, (x2 + w2 / 2, t2 + h2 + 0.02), (x2 + w2 / 2, t3 - 0.02))
-    t = t3 + 0.72
-    cx = [x3 + 0.18, x3 + 1.75, x3 + 3.75, W - 0.18]
-    for (fam, backend, cmds), n in zip(FAMILIES, COUNTS):
-        box(ax, x3 + pad, t, w3 - 2 * pad, rh, fc="white", ec=GRID, r=0.04, z=1)
-        mid = t + rh / 2
-        txt(ax, cx[0], mid, fam, size=5.9, bold=True, va="center")
-        txt(ax, cx[1], mid, backend, size=5.5, color=GFC, va="center")
-        txt(ax, cx[2], mid, cmds, size=5.2, mono=True, color=INK_2, va="center")
-        txt(ax, cx[3], mid, str(n), size=6.0, color=INK_2, ha="right", va="center")
-        t += rh + rgap
-    txt(ax, x3 + pad, t + 0.04,
-        "Converters share helpers, not a data model: _common (file listing, output "
-        "directories, logging) and, for the\npopulation-genetics VCF family, "
-        "_eigenstrat_common (sample and chromosome maps, polarisation, filters).\n"
-        "annotate-tree and orthogroups-to-fasta take named input files rather than "
-        "a directory; fasta-gff-to-gbk pairs files by stem.",
-        size=5.5, color=INK_2)
+    # dispatch + file loop
+    t_dis, h_dis = 1.82, 0.62
+    arrow(ax, (cx, t_cli + h_cli), (cx, t_dis),
+          label="--threads 1", lpos=(cx + 0.08, (t_cli + h_cli + t_dis) / 2))
+    stage(ax, mx, t_dis, mw, h_dis, "Load one converter, list its files",
+          "lazy import: only this converter's libraries load\n"
+          "for each input file (sorted): _convert_file(in, out)", accent=True)
 
-    # 4  outputs ---------------------------------------------------------
-    t4 = t3 + h3 + 0.25
-    x4, w4, h4 = 0.0, 2.45, H - t4
-    box(ax, x4, t4, w4, h4)
-    title(ax, x4 + pad, t4 + pad, "4", "Outputs")
-    txt(ax, x4 + pad, t4 + 0.34,
-        "One output per input in --output-dir,\n"
-        "named from the input stem\n"
-        "(sample.vcf.gz \u2192 sample.geno ...),\n"
-        "or the exact --output path.\n"
-        "File sets: EIGENSTRAT .geno/.snp/.ind,\n"
-        "PLINK .bed/.bim/.fam, FASTA + QUAL.\n"
-        "Logs on stderr; errors exit non-zero.",
+    # --threads branch
+    tx, tw = 5.05, 2.1
+    t_thr, h_thr = t_cli, 1.72
+    box(ax, tx, t_thr, tw, h_thr, fc="white", ec=GRID)
+    txt(ax, tx + tw / 2, t_thr + 0.17, "--threads N", size=6.8, bold=True)
+    txt(ax, tx + tw / 2, t_thr + 0.42,
+        "parent lists the files and\nstarts one worker per file,\nN at a time",
         size=5.7, color=INK_2)
-    arrow(ax, (x4 + w4 / 2, t3 + h3 + 0.02), (x4 + w4 / 2, t4 - 0.02))
+    for k in range(3):
+        wt = t_thr + 0.78 + k * 0.25
+        box(ax, tx + 0.12, wt, tw - 0.24, 0.2, fc=BOX, ec=GRID, r=0.03, z=2)
+        txt(ax, tx + tw / 2, wt + 0.1, f"worker {k + 1}: --pattern file{k + 1}",
+            size=5.2, mono=True, z=3)
+    arrow(ax, (mx + mw, t_cli + h_cli / 2), (tx, t_cli + h_cli / 2),
+          label="N > 1", lpos=(mx + mw + 0.12, t_cli + h_cli / 2 - 0.1))
+    arrow(ax, (tx, t_thr + 1.3), (mx + mw, t_dis + h_dis / 2),
+          conn="arc3,rad=-0.15")
+    txt(ax, tx + tw / 2, t_thr + h_thr - 0.1,
+        "\u2190 each worker re-enters with --threads 1", size=5.4,
+        color=INK_2, style="italic")
 
-    # 5  --threads -----------------------------------------------------------
-    x5 = 2.65
-    w5, h5 = W - x5, h4
-    box(ax, x5, t4, w5, h5)
-    title(ax, x5 + pad, t4 + pad, "5", "Parallel batch (--threads N)")
-    txt(ax, x5 + pad, t4 + 0.34,
-        "The parent lists the input files and runs one\n"
-        "worker per file, at most N at a time. Each worker\n"
-        "is the same command on one file with stdin closed,\n"
-        "so outputs are identical to a sequential run.\n"
-        "Pseudohaploid draws are seeded per file:\n"
-        "seed XOR crc32(file name).",
-        size=5.7, color=INK_2)
-    wx, ww = x5 + 2.45, W - x5 - 2.45 - pad
-    for k, name in enumerate(["a.vcf.gz", "b.vcf.gz", "c.vcf.gz"]):
-        tt = t4 + 0.12 + k * 0.33
-        box(ax, wx, tt, ww, 0.29, fc="white", ec=GRID, r=0.04, z=1)
-        txt(ax, wx + 0.07, tt + 0.145, f"gfc ... --pattern {name}\n  --threads 1 --force",
-            size=5.0, mono=True, va="center")
+    # backends (fan out)
+    t_be, h_be = 3.05, 1.25
+    n = len(FAMILIES)
+    gap = 0.07
+    bw = (W - gap * (n - 1)) / n
+    bottom_dis = t_dis + h_dis
+    for i, (fam, backend, examples, cnt) in enumerate(FAMILIES):
+        bx = i * (bw + gap)
+        box(ax, bx, t_be, bw, h_be, fc="white", ec=GFC, lw=0.7)
+        txt(ax, bx + bw / 2, t_be + 0.2, fam, size=6.0, bold=True)
+        txt(ax, bx + bw / 2, t_be + 0.53, backend, size=5.3, color=GFC)
+        txt(ax, bx + bw / 2, t_be + 0.92, examples, size=4.7, mono=True, color=INK_2)
+        txt(ax, bx + bw - 0.06, t_be + 0.06, str(cnt), size=5.6, color=INK_2,
+            ha="right", va="top")
+        sx = cx - mw / 2 + mw * (i + 0.5) / n
+        arrow(ax, (sx, bottom_dis), (bx + bw / 2, t_be), lw=0.8)
+
+    # outputs (converge)
+    t_out, h_out = 4.85, 0.6
+    for i in range(n):
+        bx = i * (bw + gap)
+        ex = cx - mw / 2 + mw * (i + 0.5) / n
+        arrow(ax, (bx + bw / 2, t_be + h_be), (ex, t_out), lw=0.8)
+    stage(ax, mx, t_out, mw, h_out, "Output files in --output-dir",
+          "one per input, named from its stem (or the exact --output);\n"
+          "file sets for EIGENSTRAT, PLINK and FASTA + QUAL")
+    txt(ax, mx + mw + 0.15, t_out + 0.3,
+        "logs on stderr;\nerrors exit non-zero", size=5.6, color=INK_2, ha="left")
 
     ax.set_xlim(-0.02, W + 0.02)
     ax.set_ylim(-0.02, H + 0.02)
