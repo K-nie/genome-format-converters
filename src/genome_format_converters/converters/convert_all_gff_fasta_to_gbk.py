@@ -111,6 +111,31 @@ def _gff3_to_gb_qualifiers(ftype: str, attrs: dict) -> dict:
     return quals
 
 
+# GenBank feature keys are at most 15 characters (INSDC feature table, and
+# the fixed key column of the flat file). Biopython cuts longer keys to 16
+# characters and runs them into the location ("transposable_elecomplement(..)"),
+# which no reader parses back correctly. Sequence Ontology types that long are
+# written as the nearest INSDC key instead, with the GFF3 type kept in /note.
+_LONG_TYPE_KEYS = {
+    "transposable_element_gene": ("gene", {}),
+    "transposable_element": ("mobile_element", {"mobile_element_type": ["transposon"]}),
+    "pseudogenic_transcript": ("misc_RNA", {"pseudo": None}),
+    "pseudogenic_exon": ("exon", {"pseudo": None}),
+}
+_MAX_KEY = 15
+
+
+def _insdc_key(ftype: str, qualifiers: dict) -> str:
+    """Return a feature key GenBank can hold, adding qualifiers when the GFF3
+    type is longer than 15 characters."""
+    if len(ftype) <= _MAX_KEY:
+        return ftype
+    key, extra = _LONG_TYPE_KEYS.get(ftype, ("misc_feature", {}))
+    qualifiers.update(extra)
+    qualifiers["note"] = [f"GFF3 type: {ftype}"] + list(qualifiers.get("note", []))
+    return key
+
+
 def _create_feature(ftype: str, start: int, end: int, strand: str, phase: str, attrs: dict) -> SeqFeature:
     start0 = start - 1
     if start0 < 0:
@@ -121,7 +146,7 @@ def _create_feature(ftype: str, start: int, end: int, strand: str, phase: str, a
         if cs is not None:
             qualifiers["codon_start"] = cs
     location = FeatureLocation(start0, end, strand=_strand_int(strand))
-    return SeqFeature(location, type=ftype, qualifiers=qualifiers)
+    return SeqFeature(location, type=_insdc_key(ftype, qualifiers), qualifiers=qualifiers)
 
 
 def _parse_gff3_attributes(attr_field: str) -> dict:

@@ -682,19 +682,27 @@ def main():
         _run_parallel(args, in_dir, out_dir, pattern, threads)
         return
 
+    # Single-file mode: note what the output directory holds now, so the file
+    # this run writes can be told apart from files already there.
+    before = {}
+    if rename_after is not None and Path(rename_after[0]).is_dir():
+        before = {p.name: p.stat().st_mtime_ns
+                  for p in Path(rename_after[0]).iterdir() if p.is_file()}
+
     dispatch_table[args.command]()
 
-    # Single-file mode rename — the batch_convert wrote into out_dir using
-    # its own derived filename; rename to the user's requested --output path
-    # if the names differ.
+    # Single-file mode rename: batch_convert wrote into out_dir under its own
+    # derived name; rename that file to the requested --output name.
     if rename_after is not None:
         out_dir_p, forced_name = rename_after
         out_dir_p = Path(out_dir_p)
-        candidates = [p for p in out_dir_p.iterdir()
-                      if p.is_file() and p.name != forced_name]
-        # If exactly one new file was produced and its name differs, rename it.
-        if len(candidates) == 1 and candidates[0].name != forced_name:
-            candidates[0].rename(out_dir_p / forced_name)
+        written = [p for p in out_dir_p.iterdir()
+                   if p.is_file() and p.name != forced_name
+                   and before.get(p.name) != p.stat().st_mtime_ns]
+        # Only a single-output converter is renamed; file sets (EIGENSTRAT,
+        # PLINK, FASTA + QUAL) keep their derived names.
+        if len(written) == 1:
+            written[0].rename(out_dir_p / forced_name)
 
 
 if __name__ == "__main__":

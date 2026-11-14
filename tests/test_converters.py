@@ -469,3 +469,16 @@ def test_gff3_to_bed12_every_exon_parent_is_a_transcript(tmp_path):
     gff3_to_bed12.batch_convert(str(_ens_dir(tmp_path)), str(out))
     names = [r.split("\t")[3] for r in (out / "e.bed12").read_text().splitlines()]
     assert sorted(names) == sorted(_ENS_TX)
+
+
+def test_single_file_output_is_renamed_when_the_folder_has_other_files(tmp_path):
+    import subprocess
+    import sys as _sys
+    src = Path(__file__).parent / "test_data" / "tiny.gff3"
+    (tmp_path / "in.gff3").write_text(src.read_text())
+    (tmp_path / "unrelated.txt").write_text("x\n")
+    subprocess.run([_sys.executable, "-m", "genome_format_converters.cli", "-q",
+                    "gff3-to-gtf", "--input", str(tmp_path / "in.gff3"),
+                    "--output", str(tmp_path / "out.gtf")], check=True)
+    assert (tmp_path / "out.gtf").exists()
+    assert not (tmp_path / "in.gtf").exists()
