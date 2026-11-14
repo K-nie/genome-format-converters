@@ -422,6 +422,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--results", required=True, type=Path)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--verdicts", type=Path,
+                    help="Read correctness verdicts (main and annotations sidecars) from "
+                         "this results directory instead, e.g. a one-replicate run made "
+                         "after a comparator fix; timings still come from --results.")
     args = ap.parse_args()
     out = args.out or args.results / "paper"
     figs, tabs = out / "figures", out / "tables"
@@ -461,7 +465,11 @@ def main() -> int:
                 sub = ann[ann["dataset"] == ds]
                 fig_runtime_memory(sub, per_cell(sub), figs, f"fig_annotations_{ds}")
 
-    verd = load_verdicts(phases)
+    verd_phases = extract(args.verdicts) if args.verdicts else phases
+    if args.verdicts:
+        md.append(f"Verdicts read from {args.verdicts}.")
+        md.append("")
+    verd = load_verdicts(verd_phases)
     if not verd.empty:
         write(verd[["row", "tool", "reference", "state", "conventions", "reason"]],
               "verdicts", "Four-state verdicts")
