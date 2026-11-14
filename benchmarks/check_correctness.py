@@ -529,7 +529,8 @@ _CHECKERS: dict[str, Callable[[Path, Path], str]] = {
 
 
 def populate(task: str, bench_dir: Path, tsv_path: Path,
-             input_vcf: Optional[Path] = None) -> str:
+             input_vcf: Optional[Path] = None,
+             input_dir: Optional[Path] = None) -> str:
     """Read tsv_path, fill in `correct` for each row, write back. Return
     a one-line summary suitable for piping into `head -20`."""
     if task not in _CHECKERS:
@@ -606,7 +607,7 @@ def populate(task: str, bench_dir: Path, tsv_path: Path,
             continue
         else:
             tool_dir = gfc_dir if tool == "gfc" else _rep1_dir(bench_dir, task, tool)
-            v = (comparator(tool_dir, ref_dir) if tool_dir is not None
+            v = (comparator(tool_dir, ref_dir, input_dir=input_dir) if tool_dir is not None
                  else fs.Verdict(fs.LIMITATION, "no rep1 output"))
             ref_name = ref_tool
         verdict_per_tool[tool] = v.correct_flag
@@ -664,9 +665,14 @@ def main() -> None:
     ap.add_argument("--input-vcf",
                     help="T8 only: the input VCF, for the pseudohaploid "
                          "consistency check.")
+    ap.add_argument("--input-dir",
+                    help="T4/T5: the input GFF3 file or directory, used to "
+                         "recognise transposable-element transcripts that a "
+                         "reference tool does not convert.")
     args = ap.parse_args()
     msg = populate(args.task, Path(args.bench_dir), Path(args.tsv),
-                   Path(args.input_vcf) if args.input_vcf else None)
+                   Path(args.input_vcf) if args.input_vcf else None,
+                   Path(args.input_dir) if args.input_dir else None)
     print(msg)
 
 

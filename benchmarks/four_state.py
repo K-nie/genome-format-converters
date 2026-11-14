@@ -525,6 +525,30 @@ def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
     # seqret also write the child exon/mRNA/CDS rows. Feature types the
     # reference never writes are reported, not judged; every feature type
     # the reference does write must match exactly.
+    # Biopython cuts feature keys longer than GenBank's 15 characters to 16
+    # and runs them into the location, so a reference written that way holds
+    # keys such as "transposable_ele". Those features are matched to the
+    # candidate by location alone (any key), then left out of the
+    # type-by-type comparison below.
+    truncated = 0
+    for rid in r:
+        if rid not in c:
+            continue
+        rf, cf_all = r[rid][1], c[rid][1]
+        for (t, loc), n in list(rf.items()):
+            if len(t) != 16:
+                continue
+            for _ in range(n):
+                same = [k for k in cf_all if k[1] == loc and cf_all[k] > 0]
+                if not same:
+                    return Verdict(DISAGREEMENT,
+                                   f"{rid}: no candidate feature at {loc} "
+                                   f"(reference key {t!r})")
+                same.sort(key=lambda k: (k[0] != t, k[0] != "gene", k[0]))
+                cf_all[same[0]] -= 1
+                truncated += 1
+            del rf[(t, loc)]
+        c[rid] = (c[rid][0], +cf_all)
     r_types = {t for rid in r for (t, _loc) in r[rid][1]}
     c_types = {t for rid in c for (t, _loc) in c[rid][1]}
     extra_types = sorted(c_types - r_types)
@@ -536,6 +560,10 @@ def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
             return Verdict(DISAGREEMENT, f"feature set differs in {rid}")
     conv = ["rendering"]
     reason = "rendering (line wrap, qualifier order)"
+    if truncated:
+        conv.append("reference-truncates-keys")
+        reason += (f"; {truncated} reference features with keys cut to 16 "
+                   "characters matched by location")
     if extra_types:
         conv.append("reference-omits-children")
         reason += f"; reference writes no {', '.join(extra_types)} features (not checked)"
@@ -579,6 +607,47 @@ def _gtf_model(files: Sequence[Path]):
 _ID_PREFIX = re.compile(r"^(?:transcript|gene|mRNA|rna|CDS|exon):")
 
 
+def _te_ids(input_dir) -> set:
+    """IDs of transposable-element transcripts in the input GFF3 files:
+    features typed transposable_element, and any child of a
+    transposable_element_gene. Returned with and without an Ensembl type
+    prefix, so either spelling matches."""
+    if not input_dir:
+        return set()
+    p = Path(input_dir)
+    files = [p] if p.is_file() else sorted(list(p.glob("*.gff3")) + list(p.glob("*.gff")))
+    te_genes, out = set(), set()
+    rows = []
+    for f in files:
+        for line in _data_lines(f):
+            parts = line.split("\t")
+            if len(parts) < 9:
+                continue
+            attrs = dict(kv.split("=", 1) for kv in parts[8].split(";") if "=" in kv)
+            rows.append((parts[2], attrs.get("ID"), attrs.get("Parent", "")))
+            if parts[2] == "transposable_element_gene" and attrs.get("ID"):
+                te_genes.add(attrs["ID"])
+    for ftype, fid, parent in rows:
+        if not fid:
+            continue
+        if ftype == "transposable_element" or set(parent.split(",")) & te_genes:
+            out.update({fid, _ID_PREFIX.sub("", fid)})
+    return out
+
+
+def _drop_reference_skipped_te(c: dict, r: dict, te: set):
+    """When the candidate's extra keys are all transposable-element
+    transcripts and the reference has nothing the candidate lacks, return the
+    candidate without them (the reference tool does not convert TEs).
+    Otherwise None."""
+    extra = set(c) - set(r)
+    if not te or not extra or set(r) - set(c):
+        return None
+    if not all(k in te or _ID_PREFIX.sub("", k) in te for k in extra):
+        return None
+    return {k: v for k, v in c.items() if k not in extra}
+
+
 def _set_diff_reason(what: str, c: set, r: set) -> str:
     only_c, only_r = sorted(c - r), sorted(r - c)
     bits = [f"{what} differ"]
@@ -601,7 +670,7 @@ def _strip_prefix_keys(d: dict) -> Optional[dict]:
     return out
 
 
-def compare_t4(cand: Path, ref: Path, **_) -> Verdict:
+def compare_t4(cand: Path, ref: Path, input_dir=None, **_) -> Verdict:
     c_files, r_files = _files(cand, "*.gtf"), _files(ref, "*.gtf")
     if not c_files or not r_files:
         return _missing("GTF files")
@@ -614,11 +683,19 @@ def compare_t4(cand: Path, ref: Path, **_) -> Verdict:
             any(l.split("\t")[2] == "gene" for l in r_lines):
         conv.add("gene-rows")
     c, r = _gtf_model(c_files), _gtf_model(r_files)
+    te = _te_ids(input_dir)
     if set(c) != set(r):
         c2, r2 = _strip_prefix_keys(c), _strip_prefix_keys(r)
         if c2 is not None and r2 is not None and set(c2) == set(r2):
             conv.add("id-prefix")
             c, r = c2, r2
+        elif (c3 := _drop_reference_skipped_te(c, r, te)) is not None and set(c3) == set(r):
+            conv.add("reference-drops-transposons")
+            c = c3
+        elif (c2 is not None and r2 is not None and
+              (c3 := _drop_reference_skipped_te(c2, r2, te)) is not None and set(c3) == set(r2)):
+            conv.update({"id-prefix", "reference-drops-transposons"})
+            c, r = c3, r2
         else:
             return Verdict(DISAGREEMENT, _set_diff_reason("transcript sets", set(c), set(r)))
     for tid in c:
@@ -646,7 +723,7 @@ def _bed_rows(files: Sequence[Path]) -> List[List[str]]:
             for l in _data_lines(f, skip=("#", "track", "browser"))]
 
 
-def compare_t5(cand: Path, ref: Path, **_) -> Verdict:
+def compare_t5(cand: Path, ref: Path, input_dir=None, **_) -> Verdict:
     c_files = _files(cand, "*.bed12", "*.bed")
     r_files = _files(ref, "*.bed12", "*.bed")
     if not c_files or not r_files:
@@ -672,11 +749,23 @@ def compare_t5(cand: Path, ref: Path, **_) -> Verdict:
     r_by = {}
     for row in r:
         r_by.setdefault(row[3] if len(row) > 3 else key(row), row)
+    te = _te_ids(input_dir)
+    if set(c_by) != set(r_by):
+        c3 = _drop_reference_skipped_te(c_by, r_by, te)
+        if c3 is not None and set(c3) == set(r_by):
+            conv.add("reference-drops-transposons")
+            c = [row for row in c if (row[3] if len(row) > 3 else key(row)) in c3]
+            c_by = c3
     if set(c_by) != set(r_by):
         c2, r2 = _strip_prefix_keys(c_by), _strip_prefix_keys(r_by)
         if c2 is not None and r2 is not None and set(c2) == set(r2):
             conv.add("id-prefix")
             c_by, r_by = c2, r2
+        elif (c2 is not None and r2 is not None and
+              (c3 := _drop_reference_skipped_te(c2, r2, te)) is not None and set(c3) == set(r2)):
+            conv.update({"id-prefix", "reference-drops-transposons"})
+            c = [row for row in c if _ID_PREFIX.sub("", row[3]) in c3]
+            c_by, r_by = c3, r2
         else:
             # Tools differ in which attribute names a row (ID vs Name);
             # match rows on coordinates and blocks instead.

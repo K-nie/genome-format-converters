@@ -195,3 +195,88 @@ def test_t1_convertf_default_genetic_position(dup_vcf, tmp_path):
     assert v.state == fs.STRUCTURAL and "genetic-position-default" in v.conventions, v
     set_gpos(lambda r: "0.5")
     assert fs.compare_t1(out, ref).state == fs.DISAGREEMENT
+
+
+# ---- transposable elements (yeast R64): references that skip or truncate them
+
+_TE_GFF = (
+    "##gff-version 3\n"
+    "I\tsgd\tgene\t100\t400\t.\t+\t.\tID=gene:YAL001C\n"
+    "I\tsgd\tmRNA\t100\t400\t.\t+\t.\tID=transcript:YAL001C_mRNA;Parent=gene:YAL001C\n"
+    "I\tsgd\texon\t100\t400\t.\t+\t.\tParent=transcript:YAL001C_mRNA\n"
+    "I\tsgd\ttransposable_element_gene\t1000\t2000\t.\t-\t.\tID=gene:YAR009C\n"
+    "I\tsgd\ttransposable_element\t1000\t2000\t.\t-\t.\tID=transcript:YAR009C;Parent=gene:YAR009C\n"
+    "I\tsgd\texon\t1000\t2000\t.\t-\t.\tParent=transcript:YAR009C\n"
+)
+
+
+def _gtf(path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(
+        f'I\tsgd\texon\t{s}\t{e}\t.\t{st}\t.\tgene_id "{g}"; transcript_id "{t}";\n'
+        for t, g, s, e, st in rows))
+
+
+def test_t4_reference_that_drops_te_transcripts(tmp_path):
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "te.gff3").write_text(_TE_GFF)
+    mrna = ("transcript:YAL001C_mRNA", "gene:YAL001C", 100, 400, "+")
+    te = ("transcript:YAR009C", "gene:YAR009C", 1000, 2000, "-")
+    _gtf(tmp_path / "c" / "te.gtf", [mrna, te])
+    _gtf(tmp_path / "r" / "te.gtf", [mrna])
+    v = fs.compare_t4(tmp_path / "c", tmp_path / "r", input_dir=tmp_path / "in")
+    assert v.state == fs.STRUCTURAL and "reference-drops-transposons" in v.conventions
+    # Without the input, or when the extra transcript is not a TE, it is a defect.
+    assert fs.compare_t4(tmp_path / "c", tmp_path / "r").state == fs.DISAGREEMENT
+    _gtf(tmp_path / "c" / "te.gtf", [mrna, te, ("transcript:X", "gene:X", 5, 9, "+")])
+    assert fs.compare_t4(tmp_path / "c", tmp_path / "r",
+                         input_dir=tmp_path / "in").state == fs.DISAGREEMENT
+
+
+def test_t3_reference_with_truncated_keys_and_gfc_insdc_keys(tmp_path):
+    from Bio import SeqIO
+    from Bio.Seq import Seq
+    from Bio.SeqFeature import FeatureLocation, SeqFeature
+    from Bio.SeqRecord import SeqRecord
+    from genome_format_converters.converters import convert_all_gff_fasta_to_gbk as gbk
+
+    ind = tmp_path / "in"
+    ind.mkdir()
+    (ind / "te.gff3").write_text(_TE_GFF)
+    (ind / "te.fasta").write_text(">I\n" + "A" * 2100 + "\n")
+    gbk.batch_convert(str(ind), str(tmp_path / "c"))
+    out = next((tmp_path / "c").iterdir())
+    text = out.read_text()
+    assert "transposable_ele" not in text.split("ORIGIN")[0].replace(
+        "GFF3 type: transposable_element", "")
+    types = [f.type for f in SeqIO.read(str(out), "genbank").features]
+    assert types.count("mobile_element") == 1 and all(len(t) <= 15 for t in types)
+
+    # A Biopython-written reference keeps only top-level features and cuts
+    # the TE gene's key to "transposable_ele".
+    rec = SeqRecord(Seq("A" * 2100), id="I", annotations={"molecule_type": "DNA"})
+    rec.features = [SeqFeature(FeatureLocation(99, 400, 1), type="gene"),
+                    SeqFeature(FeatureLocation(999, 2000, -1),
+                               type="transposable_element_gene")]
+    (tmp_path / "r").mkdir()
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        SeqIO.write(rec, str(tmp_path / "r" / out.name), "genbank")
+    v = fs.compare_t3(tmp_path / "c", tmp_path / "r")
+    assert v.state == fs.STRUCTURAL, v.reason
+    assert "reference-truncates-keys" in v.conventions
+
+
+def test_t5_reference_that_drops_te_transcripts(tmp_path):
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "te.gff3").write_text(_TE_GFF)
+    mrna = "I\t99\t400\ttranscript:YAL001C_mRNA\t0\t+\t99\t400\t0\t1\t301,\t0,\n"
+    te = "I\t999\t2000\ttranscript:YAR009C\t0\t-\t999\t999\t0\t1\t1001,\t0,\n"
+    for d, rows in (("c", mrna + te), ("r", mrna)):
+        (tmp_path / d).mkdir()
+        (tmp_path / d / "te.bed").write_text(rows)
+    v = fs.compare_t5(tmp_path / "c", tmp_path / "r", input_dir=tmp_path / "in")
+    assert v.state == fs.STRUCTURAL and "reference-drops-transposons" in v.conventions
+    assert "row-order" not in v.conventions
+    assert fs.compare_t5(tmp_path / "c", tmp_path / "r").state == fs.DISAGREEMENT
