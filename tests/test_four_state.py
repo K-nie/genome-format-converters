@@ -175,3 +175,23 @@ def test_t1_reference_that_drops_a_colocated_record(dup_vcf, tmp_path):
         del rows[0]
         f.write_text("\n".join(rows) + "\n")
     assert fs.compare_t1(out, ref).state == fs.DISAGREEMENT
+
+
+def test_t1_convertf_default_genetic_position(dup_vcf, tmp_path):
+    """convertf turns a 0 genetic position into pos x 1e-8 Morgans."""
+    out = tmp_path / "eig"
+    mutation_test.gfc("vcf-to-eigenstrat", "--input-dir", str(dup_vcf),
+                      "--output-dir", str(out), "--force")
+    ref = tmp_path / "ref"
+    shutil.copytree(out, ref)
+    snp = next(ref.glob("*.snp"))
+
+    def set_gpos(fn):
+        rows = [l.split() for l in snp.read_text().splitlines()]
+        snp.write_text("".join("\t".join(r[:2] + [fn(r)] + r[3:]) + "\n" for r in rows))
+
+    set_gpos(lambda r: f"{int(r[3]) * 1e-8:.6f}")  # convertf prints 6 decimals
+    v = fs.compare_t1(out, ref)
+    assert v.state == fs.STRUCTURAL and "genetic-position-default" in v.conventions, v
+    set_gpos(lambda r: "0.5")
+    assert fs.compare_t1(out, ref).state == fs.DISAGREEMENT

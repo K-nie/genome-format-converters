@@ -291,8 +291,18 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
                 conv.add("chrom-label")
             if s[0] != rs[0]:
                 conv.add("snp-id")
-            if not math.isclose(float(s[2]), float(rs[2]), abs_tol=1e-6):
-                return Verdict(DISAGREEMENT, f"genetic position differs at {s[1]}:{s[3]}")
+            cg, rg_pos = float(s[2]), float(rs[2])
+            if not math.isclose(cg, rg_pos, abs_tol=1e-6):
+                # EIGENSOFT convertf fills a missing (0) genetic position
+                # with physical position x 1e-8 Morgans (1 cM per Mb). Accept
+                # exactly that and nothing else.
+                fake = int(s[3]) * 1e-8
+                if (cg == 0 and math.isclose(rg_pos, fake, rel_tol=1e-6, abs_tol=1e-6)) or \
+                        (rg_pos == 0 and math.isclose(cg, fake, rel_tol=1e-6, abs_tol=1e-6)):
+                    conv.add("genetic-position-default")
+                else:
+                    return Verdict(DISAGREEMENT, f"genetic position differs at {s[1]}:{s[3]} "
+                                                 f"({s[2]} vs {rs[2]})")
             ca, ra = (s[4].upper(), s[5].upper()), (rs[4].upper(), rs[5].upper())
             if ca == ra:
                 if g != rg:
@@ -675,10 +685,18 @@ def compare_t5(cand: Path, ref: Path, **_) -> Verdict:
             # Only when the naming differs throughout: one renamed row in an
             # otherwise matching file is a defect, not a convention.
             unnamed = len(set(c_by) - set(r_by)) / max(len(c_by), 1)
-            if ck == rk and max(ck.values()) == 1 and unnamed >= 0.9:
+            if ck == rk and unnamed >= 0.9:
                 conv.add("name-attribute")
-                c_by = {key(row): row for row in c}
-                r_by = {key(row): row for row in r}
+                # Isoforms can share exons and differ only in CDS, so rows
+                # with the same key are paired in thickStart/End order.
+                def by_key(rows):
+                    out, seen = {}, Counter()
+                    for row in sorted(rows, key=lambda x: (key(x), x[6:8] if len(x) >= 8 else ())):
+                        k = key(row)
+                        out[(k, seen[k])] = row
+                        seen[k] += 1
+                    return out
+                c_by, r_by = by_key(c), by_key(r)
             else:
                 return Verdict(DISAGREEMENT,
                                _set_diff_reason("feature names", set(c_by), set(r_by)))
