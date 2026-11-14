@@ -61,7 +61,6 @@ Ca22chr1A_C_albicans_SC5314	tRNAscan-SE	exon	2727552	2727588	.	-	.	ID=Ca22chr1A_
 Ca22chr1A_C_albicans_SC5314	tRNAscan-SE	exon	2727492	2727527	.	-	.	ID=Ca22chr1A_C_albicans_SC5314.trna12.exon2;Parent=Ca22chr1A_C_albicans_SC5314.trna12;
 Ca22chr1A_C_albicans_SC5314	tRNAscan-SE	tRNA	3060939	3061011	64.0	-	.	ID=Ca22chr1A_C_albicans_SC5314.trna11;Name=Ca22chr1A_C_albicans_SC5314.tRNA11-AlaAGC;isotype=Ala;anticodon=AGC;gene_biotype=tRNA;
 Ca22chr1A_C_albicans_SC5314	tRNAscan-SE	exon	3060939	3061011	.	-	.	ID=Ca22chr1A_C_albicans_SC5314.trna11.exon1;Parent=Ca22chr1A_C_albicans_SC5314.trna11;
-##gff-version 3
 Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	tRNA	7396	7467	65.7	-	.	ID=Ca22chr2A_C_albicans_SC5314.trna24;Name=Ca22chr2A_C_albicans_SC5314.tRNA24-ValCAC;isotype=Val;anticodon=CAC;gene_biotype=tRNA;
 Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	exon	7396	7467	.	-	.	ID=Ca22chr2A_C_albicans_SC5314.trna24.exon1;Parent=Ca22chr2A_C_albicans_SC5314.trna24;
 Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	tRNA	175896	176014	58.4	-	.	ID=Ca22chr2A_C_albicans_SC5314.trna23;Name=Ca22chr2A_C_albicans_SC5314.tRNA23-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
@@ -122,7 +121,6 @@ Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	exon	2167671	2167706	.	-	.	ID=Ca22chr2A_
 Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	tRNA	2168404	2168491	54.9	+	.	ID=Ca22chr2A_C_albicans_SC5314.trna13;Name=Ca22chr2A_C_albicans_SC5314.tRNA13-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;
 Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	exon	2168404	2168440	.	+	.	ID=Ca22chr2A_C_albicans_SC5314.trna13.exon1;Parent=Ca22chr2A_C_albicans_SC5314.trna13;
 Ca22chr2A_C_albicans_SC5314	tRNAscan-SE	exon	2168456	2168491	.	+	.	ID=Ca22chr2A_C_albicans_SC5314.trna13.exon2;Parent=Ca22chr2A_C_albicans_SC5314.trna13;
-##gff-version 3
 Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	tRNA	196074	196144	67.3	+	.	ID=Ca22chr3A_C_albicans_SC5314.trna1;Name=Ca22chr3A_C_albicans_SC5314.tRNA1-GlyTCC;isotype=Gly;anticodon=TCC;gene_biotype=tRNA;
 Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	exon	196074	196144	.	+	.	ID=Ca22chr3A_C_albicans_SC5314.trna1.exon1;Parent=Ca22chr3A_C_albicans_SC5314.trna1;
 Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	tRNA	261827	261915	55.7	-	.	ID=Ca22chr3A_C_albicans_SC5314.trna21;Name=Ca22chr3A_C_albicans_SC5314.tRNA21-ArgCCT;isotype=Arg;anticodon=CCT;gene_biotype=tRNA;
@@ -177,7 +175,6 @@ Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	exon	1715637	1715709	.	+	.	ID=Ca22chr3A_
 Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	tRNA	1715718	1715805	54.9	+	.	ID=Ca22chr3A_C_albicans_SC5314.trna6;Name=Ca22chr3A_C_albicans_SC5314.tRNA6-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;
 Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	exon	1715718	1715754	.	+	.	ID=Ca22chr3A_C_albicans_SC5314.trna6.exon1;Parent=Ca22chr3A_C_albicans_SC5314.trna6;
 Ca22chr3A_C_albicans_SC5314	tRNAscan-SE	exon	1715770	1715805	.	+	.	ID=Ca22chr3A_C_albicans_SC5314.trna6.exon2;Parent=Ca22chr3A_C_albicans_SC5314.trna6;
-##gff-version 3
 Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	tRNA	97323	97393	60.1	-	.	ID=Ca22chr4A_C_albicans_SC5314.trna17;Name=Ca22chr4A_C_albicans_SC5314.tRNA17-GlyCCC;isotype=Gly;anticodon=CCC;gene_biotype=tRNA;
 Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	exon	97323	97393	.	-	.	ID=Ca22chr4A_C_albicans_SC5314.trna17.exon1;Parent=Ca22chr4A_C_albicans_SC5314.trna17;
 Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	tRNA	157051	157121	67.3	+	.	ID=Ca22chr4A_C_albicans_SC5314.trna1;Name=Ca22chr4A_C_albicans_SC5314.tRNA1-GlyTCC;isotype=Gly;anticodon=TCC;gene_biotype=tRNA;
@@ -216,7 +213,6 @@ Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	tRNA	1324955	1325026	78.6	-	.	ID=Ca22chr
 Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	exon	1324955	1325026	.	-	.	ID=Ca22chr4A_C_albicans_SC5314.trna9.exon1;Parent=Ca22chr4A_C_albicans_SC5314.trna9;
 Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	tRNA	1331529	1331610	76.7	+	.	ID=Ca22chr4A_C_albicans_SC5314.trna8;Name=Ca22chr4A_C_albicans_SC5314.tRNA8-SerTGA;isotype=Ser;anticodon=TGA;gene_biotype=tRNA;
 Ca22chr4A_C_albicans_SC5314	tRNAscan-SE	exon	1331529	1331610	.	+	.	ID=Ca22chr4A_C_albicans_SC5314.trna8.exon1;Parent=Ca22chr4A_C_albicans_SC5314.trna8;
-##gff-version 3
 Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	tRNA	66383	66464	68.9	-	.	ID=Ca22chr5A_C_albicans_SC5314.trna6;Name=Ca22chr5A_C_albicans_SC5314.tRNA6-LeuCAG;isotype=Leu;anticodon=CAG;gene_biotype=tRNA;
 Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	exon	66383	66464	.	-	.	ID=Ca22chr5A_C_albicans_SC5314.trna6.exon1;Parent=Ca22chr5A_C_albicans_SC5314.trna6;
 Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	tRNA	217451	217544	49.4	+	.	ID=Ca22chr5A_C_albicans_SC5314.trna1;Name=Ca22chr5A_C_albicans_SC5314.tRNA1-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
@@ -232,7 +228,6 @@ Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	exon	769601	769637	.	+	.	ID=Ca22chr5A_C_
 Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	exon	769660	769694	.	+	.	ID=Ca22chr5A_C_albicans_SC5314.trna4.exon2;Parent=Ca22chr5A_C_albicans_SC5314.trna4;
 Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	tRNA	1035099	1035171	64.0	+	.	ID=Ca22chr5A_C_albicans_SC5314.trna5;Name=Ca22chr5A_C_albicans_SC5314.tRNA5-AlaAGC;isotype=Ala;anticodon=AGC;gene_biotype=tRNA;
 Ca22chr5A_C_albicans_SC5314	tRNAscan-SE	exon	1035099	1035171	.	+	.	ID=Ca22chr5A_C_albicans_SC5314.trna5.exon1;Parent=Ca22chr5A_C_albicans_SC5314.trna5;
-##gff-version 3
 Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	tRNA	6934	7044	58.7	+	.	ID=Ca22chr6A_C_albicans_SC5314.trna1;Name=Ca22chr6A_C_albicans_SC5314.tRNA1-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
 Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	exon	6934	6972	.	+	.	ID=Ca22chr6A_C_albicans_SC5314.trna1.exon1;Parent=Ca22chr6A_C_albicans_SC5314.trna1;
 Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	exon	7001	7044	.	+	.	ID=Ca22chr6A_C_albicans_SC5314.trna1.exon2;Parent=Ca22chr6A_C_albicans_SC5314.trna1;
@@ -243,11 +238,9 @@ Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	exon	843250	843322	.	-	.	ID=Ca22chr6A_C_
 Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	tRNA	992880	992994	58.6	+	.	ID=Ca22chr6A_C_albicans_SC5314.trna3;Name=Ca22chr6A_C_albicans_SC5314.tRNA3-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
 Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	exon	992880	992918	.	+	.	ID=Ca22chr6A_C_albicans_SC5314.trna3.exon1;Parent=Ca22chr6A_C_albicans_SC5314.trna3;
 Ca22chr6A_C_albicans_SC5314	tRNAscan-SE	exon	992951	992994	.	+	.	ID=Ca22chr6A_C_albicans_SC5314.trna3.exon2;Parent=Ca22chr6A_C_albicans_SC5314.trna3;
-##gff-version 3
 Ca22chr7A_C_albicans_SC5314	tRNAscan-SE	tRNA	865880	865995	64.1	-	.	ID=Ca22chr7A_C_albicans_SC5314.trna1;Name=Ca22chr7A_C_albicans_SC5314.tRNA1-LeuTAA;isotype=Leu;anticodon=TAA;gene_biotype=tRNA;
 Ca22chr7A_C_albicans_SC5314	tRNAscan-SE	exon	865957	865995	.	-	.	ID=Ca22chr7A_C_albicans_SC5314.trna1.exon1;Parent=Ca22chr7A_C_albicans_SC5314.trna1;
 Ca22chr7A_C_albicans_SC5314	tRNAscan-SE	exon	865880	865925	.	-	.	ID=Ca22chr7A_C_albicans_SC5314.trna1.exon2;Parent=Ca22chr7A_C_albicans_SC5314.trna1;
-##gff-version 3
 Ca22chrM_C_albicans_SC5314	tRNAscan-SE	tRNA	3172	3242	45.8	+	.	ID=Ca22chrM_C_albicans_SC5314.trna1;Name=Ca22chrM_C_albicans_SC5314.tRNA1-AlaTGC;isotype=Ala;anticodon=TGC;gene_biotype=tRNA;
 Ca22chrM_C_albicans_SC5314	tRNAscan-SE	exon	3172	3242	.	+	.	ID=Ca22chrM_C_albicans_SC5314.trna1.exon1;Parent=Ca22chrM_C_albicans_SC5314.trna1;
 Ca22chrM_C_albicans_SC5314	tRNAscan-SE	tRNA	4002	4072	71.4	+	.	ID=Ca22chrM_C_albicans_SC5314.trna2;Name=Ca22chrM_C_albicans_SC5314.tRNA2-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
@@ -290,7 +283,6 @@ Ca22chrM_C_albicans_SC5314	tRNAscan-SE	pseudogene	34354	34435	30.8	-	.	ID=Ca22ch
 Ca22chrM_C_albicans_SC5314	tRNAscan-SE	exon	34354	34435	.	-	.	ID=Ca22chrM_C_albicans_SC5314.trna16.exon1;Parent=Ca22chrM_C_albicans_SC5314.trna16;
 Ca22chrM_C_albicans_SC5314	tRNAscan-SE	tRNA	35111	35182	59.1	+	.	ID=Ca22chrM_C_albicans_SC5314.trna15;Name=Ca22chrM_C_albicans_SC5314.tRNA15-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
 Ca22chrM_C_albicans_SC5314	tRNAscan-SE	exon	35111	35182	.	+	.	ID=Ca22chrM_C_albicans_SC5314.trna15.exon1;Parent=Ca22chrM_C_albicans_SC5314.trna15;
-##gff-version 3
 Ca22chrRA_C_albicans_SC5314	tRNAscan-SE	tRNA	10308	10418	58.7	+	.	ID=Ca22chrRA_C_albicans_SC5314.trna1;Name=Ca22chrRA_C_albicans_SC5314.tRNA1-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
 Ca22chrRA_C_albicans_SC5314	tRNAscan-SE	exon	10308	10346	.	+	.	ID=Ca22chrRA_C_albicans_SC5314.trna1.exon1;Parent=Ca22chrRA_C_albicans_SC5314.trna1;
 Ca22chrRA_C_albicans_SC5314	tRNAscan-SE	exon	10375	10418	.	+	.	ID=Ca22chrRA_C_albicans_SC5314.trna1.exon2;Parent=Ca22chrRA_C_albicans_SC5314.trna1;

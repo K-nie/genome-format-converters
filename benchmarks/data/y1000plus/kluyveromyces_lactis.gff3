@@ -53,7 +53,6 @@ CR382121	tRNAscan-SE	tRNA	970437	970509	84.0	+	.	ID=CR382121.trna14;Name=CR38212
 CR382121	tRNAscan-SE	exon	970437	970509	.	+	.	ID=CR382121.trna14.exon1;Parent=CR382121.trna14;
 CR382121	tRNAscan-SE	tRNA	977210	977281	69.1	+	.	ID=CR382121.trna15;Name=CR382121.tRNA15-iMetCAT;isotype=iMet;anticodon=CAT;gene_biotype=tRNA;
 CR382121	tRNAscan-SE	exon	977210	977281	.	+	.	ID=CR382121.trna15.exon1;Parent=CR382121.trna15;
-##gff-version 3
 CR382122	tRNAscan-SE	tRNA	115139	115211	84.3	-	.	ID=CR382122.trna27;Name=CR382122.tRNA27-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
 CR382122	tRNAscan-SE	exon	115139	115211	.	-	.	ID=CR382122.trna27.exon1;Parent=CR382122.trna27;
 CR382122	tRNAscan-SE	tRNA	336352	336424	75.8	-	.	ID=CR382122.trna26;Name=CR382122.tRNA26-ValCAC;isotype=Val;anticodon=CAC;gene_biotype=tRNA;
@@ -109,7 +108,6 @@ CR382122	tRNAscan-SE	tRNA	1200998	1201071	67.6	-	.	ID=CR382122.trna11;Name=CR382
 CR382122	tRNAscan-SE	exon	1200998	1201071	.	-	.	ID=CR382122.trna11.exon1;Parent=CR382122.trna11;
 CR382122	tRNAscan-SE	tRNA	1246831	1246902	76.6	+	.	ID=CR382122.trna10;Name=CR382122.tRNA10-ThrCGT;isotype=Thr;anticodon=CGT;gene_biotype=tRNA;
 CR382122	tRNAscan-SE	exon	1246831	1246902	.	+	.	ID=CR382122.trna10.exon1;Parent=CR382122.trna10;
-##gff-version 3
 CR382123	tRNAscan-SE	tRNA	301073	301162	71.4	+	.	ID=CR382123.trna1;Name=CR382123.tRNA1-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
 CR382123	tRNAscan-SE	exon	301073	301109	.	+	.	ID=CR382123.trna1.exon1;Parent=CR382123.trna1;
 CR382123	tRNAscan-SE	exon	301127	301162	.	+	.	ID=CR382123.trna1.exon2;Parent=CR382123.trna1;
@@ -154,7 +152,6 @@ CR382123	tRNAscan-SE	exon	1592616	1592689	.	-	.	ID=CR382123.trna13.exon1;Parent=
 CR382123	tRNAscan-SE	tRNA	1604950	1605044	65.1	-	.	ID=CR382123.trna12;Name=CR382123.tRNA12-SerGCT;isotype=Ser;anticodon=GCT;gene_biotype=tRNA;
 CR382123	tRNAscan-SE	exon	1605008	1605044	.	-	.	ID=CR382123.trna12.exon1;Parent=CR382123.trna12;
 CR382123	tRNAscan-SE	exon	1604950	1604994	.	-	.	ID=CR382123.trna12.exon2;Parent=CR382123.trna12;
-##gff-version 3
 CR382124	tRNAscan-SE	tRNA	85441	85556	58.3	-	.	ID=CR382124.trna35;Name=CR382124.tRNA35-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
 CR382124	tRNAscan-SE	exon	85519	85556	.	-	.	ID=CR382124.trna35.exon1;Parent=CR382124.trna35;
 CR382124	tRNAscan-SE	exon	85441	85484	.	-	.	ID=CR382124.trna35.exon2;Parent=CR382124.trna35;
@@ -238,7 +235,6 @@ CR382124	tRNAscan-SE	tRNA	1329593	1329663	66.3	+	.	ID=CR382124.trna19;Name=CR382
 CR382124	tRNAscan-SE	exon	1329593	1329663	.	+	.	ID=CR382124.trna19.exon1;Parent=CR382124.trna19;
 CR382124	tRNAscan-SE	tRNA	1492013	1492084	67.3	+	.	ID=CR382124.trna20;Name=CR382124.tRNA20-GlnTTG;isotype=Gln;anticodon=TTG;gene_biotype=tRNA;
 CR382124	tRNAscan-SE	exon	1492013	1492084	.	+	.	ID=CR382124.trna20.exon1;Parent=CR382124.trna20;
-##gff-version 3
 CR382125	tRNAscan-SE	tRNA	120819	120908	71.4	+	.	ID=CR382125.trna1;Name=CR382125.tRNA1-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
 CR382125	tRNAscan-SE	exon	120819	120855	.	+	.	ID=CR382125.trna1.exon1;Parent=CR382125.trna1;
 CR382125	tRNAscan-SE	exon	120873	120908	.	+	.	ID=CR382125.trna1.exon2;Parent=CR382125.trna1;
@@ -284,7 +280,6 @@ CR382125	tRNAscan-SE	exon	2021770	2021805	.	-	.	ID=CR382125.trna15.exon1;Parent=
 CR382125	tRNAscan-SE	exon	2021684	2021719	.	-	.	ID=CR382125.trna15.exon2;Parent=CR382125.trna15;
 CR382125	tRNAscan-SE	tRNA	2119065	2119136	60.3	+	.	ID=CR382125.trna14;Name=CR382125.tRNA14-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
 CR382125	tRNAscan-SE	exon	2119065	2119136	.	+	.	ID=CR382125.trna14.exon1;Parent=CR382125.trna14;
-##gff-version 3
 CR382126	tRNAscan-SE	tRNA	393907	393978	62.6	-	.	ID=CR382126.trna37;Name=CR382126.tRNA37-AspGTC;isotype=Asp;anticodon=GTC;gene_biotype=tRNA;
 CR382126	tRNAscan-SE	exon	393907	393978	.	-	.	ID=CR382126.trna37.exon1;Parent=CR382126.trna37;
 CR382126	tRNAscan-SE	tRNA	544290	544361	64.4	+	.	ID=CR382126.trna1;Name=CR382126.tRNA1-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;

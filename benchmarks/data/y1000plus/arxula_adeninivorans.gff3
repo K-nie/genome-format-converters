@@ -31,7 +31,6 @@ Arad1A	tRNAscan-SE	exon	1291025	1291095	.	+	.	ID=Arad1A.trna4.exon1;Parent=Arad1
 Arad1A	tRNAscan-SE	tRNA	1418936	1419025	64.1	-	.	ID=Arad1A.trna5;Name=Arad1A.tRNA5-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 Arad1A	tRNAscan-SE	exon	1418988	1419025	.	-	.	ID=Arad1A.trna5.exon1;Parent=Arad1A.trna5;
 Arad1A	tRNAscan-SE	exon	1418936	1418971	.	-	.	ID=Arad1A.trna5.exon2;Parent=Arad1A.trna5;
-##gff-version 3
 Arad1B	tRNAscan-SE	tRNA	198009	198115	55.5	-	.	ID=Arad1B.trna31;Name=Arad1B.tRNA31-LeuCAG;isotype=Leu;anticodon=CAG;gene_biotype=tRNA;
 Arad1B	tRNAscan-SE	exon	198078	198115	.	-	.	ID=Arad1B.trna31.exon1;Parent=Arad1B.trna31;
 Arad1B	tRNAscan-SE	exon	198009	198052	.	-	.	ID=Arad1B.trna31.exon2;Parent=Arad1B.trna31;
@@ -110,7 +109,6 @@ Arad1B	tRNAscan-SE	exon	1816053	1816089	.	+	.	ID=Arad1B.trna19.exon1;Parent=Arad
 Arad1B	tRNAscan-SE	exon	1816114	1816149	.	+	.	ID=Arad1B.trna19.exon2;Parent=Arad1B.trna19;
 Arad1B	tRNAscan-SE	tRNA	1846248	1846330	72.2	+	.	ID=Arad1B.trna20;Name=Arad1B.tRNA20-LeuAAG;isotype=Leu;anticodon=AAG;gene_biotype=tRNA;
 Arad1B	tRNAscan-SE	exon	1846248	1846330	.	+	.	ID=Arad1B.trna20.exon1;Parent=Arad1B.trna20;
-##gff-version 3
 Arad1C	tRNAscan-SE	tRNA	164186	164275	66.3	+	.	ID=Arad1C.trna1;Name=Arad1C.tRNA1-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 Arad1C	tRNAscan-SE	exon	164186	164223	.	+	.	ID=Arad1C.trna1.exon1;Parent=Arad1C.trna1;
 Arad1C	tRNAscan-SE	exon	164240	164275	.	+	.	ID=Arad1C.trna1.exon2;Parent=Arad1C.trna1;
@@ -245,7 +243,6 @@ Arad1C	tRNAscan-SE	exon	3671278	3671312	.	-	.	ID=Arad1C.trna28.exon2;Parent=Arad
 Arad1C	tRNAscan-SE	tRNA	3738251	3738337	53.5	+	.	ID=Arad1C.trna27;Name=Arad1C.tRNA27-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 Arad1C	tRNAscan-SE	exon	3738251	3738288	.	+	.	ID=Arad1C.trna27.exon1;Parent=Arad1C.trna27;
 Arad1C	tRNAscan-SE	exon	3738302	3738337	.	+	.	ID=Arad1C.trna27.exon2;Parent=Arad1C.trna27;
-##gff-version 3
 Arad1D	tRNAscan-SE	tRNA	104650	104746	76.0	-	.	ID=Arad1D.trna50;Name=Arad1D.tRNA50-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
 Arad1D	tRNAscan-SE	exon	104710	104746	.	-	.	ID=Arad1D.trna50.exon1;Parent=Arad1D.trna50;
 Arad1D	tRNAscan-SE	exon	104650	104685	.	-	.	ID=Arad1D.trna50.exon2;Parent=Arad1D.trna50;

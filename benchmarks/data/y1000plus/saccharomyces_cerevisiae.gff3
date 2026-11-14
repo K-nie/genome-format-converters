@@ -9,7 +9,6 @@ NC_001133	tRNAscan-SE	exon	181141	181178	.	+	.	ID=NC_001133.trna3.exon1;Parent=N
 NC_001133	tRNAscan-SE	exon	181211	181254	.	+	.	ID=NC_001133.trna3.exon2;Parent=NC_001133.trna3;
 NC_001133	tRNAscan-SE	tRNA	182522	182603	83.2	-	.	ID=NC_001133.trna4;Name=NC_001133.tRNA4-SerAGA;isotype=Ser;anticodon=AGA;gene_biotype=tRNA;
 NC_001133	tRNAscan-SE	exon	182522	182603	.	-	.	ID=NC_001133.trna4.exon1;Parent=NC_001133.trna4;
-##gff-version 3
 NC_001134	tRNAscan-SE	tRNA	9583	9666	75.1	+	.	ID=NC_001134.trna1;Name=NC_001134.tRNA1-LeuTAA;isotype=Leu;anticodon=TAA;gene_biotype=tRNA;
 NC_001134	tRNAscan-SE	exon	9583	9666	.	+	.	ID=NC_001134.trna1.exon1;Parent=NC_001134.trna1;
 NC_001134	tRNAscan-SE	tRNA	36398	36488	70.7	+	.	ID=NC_001134.trna2;Name=NC_001134.tRNA2-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;
@@ -37,7 +36,6 @@ NC_001134	tRNAscan-SE	tRNA	643007	643078	78.6	-	.	ID=NC_001134.trna11;Name=NC_00
 NC_001134	tRNAscan-SE	exon	643007	643078	.	-	.	ID=NC_001134.trna11.exon1;Parent=NC_001134.trna11;
 NC_001134	tRNAscan-SE	tRNA	645167	645238	60.3	+	.	ID=NC_001134.trna10;Name=NC_001134.tRNA10-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
 NC_001134	tRNAscan-SE	exon	645167	645238	.	+	.	ID=NC_001134.trna10.exon1;Parent=NC_001134.trna10;
-##gff-version 3
 NC_001135	tRNAscan-SE	tRNA	82462	82533	60.3	-	.	ID=NC_001135.trna10;Name=NC_001135.tRNA10-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
 NC_001135	tRNAscan-SE	exon	82462	82533	.	-	.	ID=NC_001135.trna10.exon1;Parent=NC_001135.trna10;
 NC_001135	tRNAscan-SE	tRNA	90859	90972	56.8	+	.	ID=NC_001135.trna1;Name=NC_001135.tRNA1-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
@@ -60,7 +58,6 @@ NC_001135	tRNAscan-SE	exon	227942	227978	.	+	.	ID=NC_001135.trna4.exon1;Parent=N
 NC_001135	tRNAscan-SE	exon	227998	228042	.	+	.	ID=NC_001135.trna4.exon2;Parent=NC_001135.trna4;
 NC_001135	tRNAscan-SE	tRNA	295484	295556	76.0	+	.	ID=NC_001135.trna5;Name=NC_001135.tRNA5-ThrAGT;isotype=Thr;anticodon=AGT;gene_biotype=tRNA;
 NC_001135	tRNAscan-SE	exon	295484	295556	.	+	.	ID=NC_001135.trna5.exon1;Parent=NC_001135.trna5;
-##gff-version 3
 NC_001136	tRNAscan-SE	tRNA	83548	83618	62.0	+	.	ID=NC_001136.trna1;Name=NC_001136.tRNA1-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;
 NC_001136	tRNAscan-SE	exon	83548	83618	.	+	.	ID=NC_001136.trna1.exon1;Parent=NC_001136.trna1;
 NC_001136	tRNAscan-SE	tRNA	359577	359672	71.1	+	.	ID=NC_001136.trna2;Name=NC_001136.tRNA2-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
@@ -123,7 +120,6 @@ NC_001136	tRNAscan-SE	exon	1352466	1352538	.	-	.	ID=NC_001136.trna16.exon1;Paren
 NC_001136	tRNAscan-SE	tRNA	1461715	1461829	56.7	-	.	ID=NC_001136.trna15;Name=NC_001136.tRNA15-LeuCAA;isotype=Leu;anticodon=CAA;gene_biotype=tRNA;
 NC_001136	tRNAscan-SE	exon	1461792	1461829	.	-	.	ID=NC_001136.trna15.exon1;Parent=NC_001136.trna15;
 NC_001136	tRNAscan-SE	exon	1461715	1461758	.	-	.	ID=NC_001136.trna15.exon2;Parent=NC_001136.trna15;
-##gff-version 3
 NC_001137	tRNAscan-SE	tRNA	61890	61960	62.0	-	.	ID=NC_001137.trna20;Name=NC_001137.tRNA20-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;
 NC_001137	tRNAscan-SE	exon	61890	61960	.	-	.	ID=NC_001137.trna20.exon1;Parent=NC_001137.trna20;
 NC_001137	tRNAscan-SE	tRNA	86604	86685	83.2	+	.	ID=NC_001137.trna1;Name=NC_001137.tRNA1-SerAGA;isotype=Ser;anticodon=AGA;gene_biotype=tRNA;
@@ -164,7 +160,6 @@ NC_001137	tRNAscan-SE	tRNA	492352	492424	69.6	-	.	ID=NC_001137.trna11;Name=NC_00
 NC_001137	tRNAscan-SE	exon	492352	492424	.	-	.	ID=NC_001137.trna11.exon1;Parent=NC_001137.trna11;
 NC_001137	tRNAscan-SE	tRNA	551285	551358	71.4	-	.	ID=NC_001137.trna10;Name=NC_001137.tRNA10-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 NC_001137	tRNAscan-SE	exon	551285	551358	.	-	.	ID=NC_001137.trna10.exon1;Parent=NC_001137.trna10;
-##gff-version 3
 NC_001138	tRNAscan-SE	tRNA	101376	101478	62.1	+	.	ID=NC_001138.trna1;Name=NC_001138.tRNA1-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 NC_001138	tRNAscan-SE	exon	101376	101411	.	+	.	ID=NC_001138.trna1.exon1;Parent=NC_001138.trna1;
 NC_001138	tRNAscan-SE	exon	101443	101478	.	+	.	ID=NC_001138.trna1.exon2;Parent=NC_001138.trna1;
@@ -190,7 +185,6 @@ NC_001138	tRNAscan-SE	exon	210669	210707	.	-	.	ID=NC_001138.trna5.exon1;Parent=N
 NC_001138	tRNAscan-SE	exon	210619	210654	.	-	.	ID=NC_001138.trna5.exon2;Parent=NC_001138.trna5;
 NC_001138	tRNAscan-SE	tRNA	226688	226760	81.2	-	.	ID=NC_001138.trna4;Name=NC_001138.tRNA4-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
 NC_001138	tRNAscan-SE	exon	226688	226760	.	-	.	ID=NC_001138.trna4.exon1;Parent=NC_001138.trna4;
-##gff-version 3
 NC_001139	tRNAscan-SE	tRNA	73829	73902	67.6	-	.	ID=NC_001139.trna36;Name=NC_001139.tRNA36-ValAAC;isotype=Val;anticodon=AAC;gene_biotype=tRNA;
 NC_001139	tRNAscan-SE	exon	73829	73902	.	-	.	ID=NC_001139.trna36.exon1;Parent=NC_001139.trna36;
 NC_001139	tRNAscan-SE	tRNA	110625	110696	57.7	-	.	ID=NC_001139.trna35;Name=NC_001139.tRNA35-HisGTG;isotype=His;anticodon=GTG;gene_biotype=tRNA;
@@ -271,7 +265,6 @@ NC_001139	tRNAscan-SE	tRNA	930953	931023	62.0	-	.	ID=NC_001139.trna22;Name=NC_00
 NC_001139	tRNAscan-SE	exon	930953	931023	.	-	.	ID=NC_001139.trna22.exon1;Parent=NC_001139.trna22;
 NC_001139	tRNAscan-SE	tRNA	1004216	1004287	77.0	+	.	ID=NC_001139.trna21;Name=NC_001139.tRNA21-ThrTGT;isotype=Thr;anticodon=TGT;gene_biotype=tRNA;
 NC_001139	tRNAscan-SE	exon	1004216	1004287	.	+	.	ID=NC_001139.trna21.exon1;Parent=NC_001139.trna21;
-##gff-version 3
 NC_001140	tRNAscan-SE	tRNA	62755	62826	57.7	+	.	ID=NC_001140.trna1;Name=NC_001140.tRNA1-HisGTG;isotype=His;anticodon=GTG;gene_biotype=tRNA;
 NC_001140	tRNAscan-SE	exon	62755	62826	.	+	.	ID=NC_001140.trna1.exon1;Parent=NC_001140.trna1;
 NC_001140	tRNAscan-SE	tRNA	85298	85371	67.6	-	.	ID=NC_001140.trna11;Name=NC_001140.tRNA11-ValAAC;isotype=Val;anticodon=AAC;gene_biotype=tRNA;
@@ -297,7 +290,6 @@ NC_001140	tRNAscan-SE	tRNA	466990	467061	77.5	+	.	ID=NC_001140.trna3;Name=NC_001
 NC_001140	tRNAscan-SE	exon	466990	467061	.	+	.	ID=NC_001140.trna3.exon1;Parent=NC_001140.trna3;
 NC_001140	tRNAscan-SE	tRNA	475706	475778	70.5	-	.	ID=NC_001140.trna4;Name=NC_001140.tRNA4-ValCAC;isotype=Val;anticodon=CAC;gene_biotype=tRNA;
 NC_001140	tRNAscan-SE	exon	475706	475778	.	-	.	ID=NC_001140.trna4.exon1;Parent=NC_001140.trna4;
-##gff-version 3
 NC_001141	tRNAscan-SE	tRNA	175031	175103	76.0	+	.	ID=NC_001141.trna1;Name=NC_001141.tRNA1-ThrAGT;isotype=Thr;anticodon=AGT;gene_biotype=tRNA;
 NC_001141	tRNAscan-SE	exon	175031	175103	.	+	.	ID=NC_001141.trna1.exon1;Parent=NC_001141.trna1;
 NC_001141	tRNAscan-SE	tRNA	183440	183513	71.4	-	.	ID=NC_001141.trna10;Name=NC_001141.tRNA10-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
@@ -318,7 +310,6 @@ NC_001141	tRNAscan-SE	tRNA	336349	336420	56.4	-	.	ID=NC_001141.trna7;Name=NC_001
 NC_001141	tRNAscan-SE	exon	336349	336420	.	-	.	ID=NC_001141.trna7.exon1;Parent=NC_001141.trna7;
 NC_001141	tRNAscan-SE	tRNA	370417	370488	60.3	+	.	ID=NC_001141.trna6;Name=NC_001141.tRNA6-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
 NC_001141	tRNAscan-SE	exon	370417	370488	.	+	.	ID=NC_001141.trna6.exon1;Parent=NC_001141.trna6;
-##gff-version 3
 NC_001142	tRNAscan-SE	tRNA	59100	59172	76.0	-	.	ID=NC_001142.trna24;Name=NC_001142.tRNA24-ThrAGT;isotype=Thr;anticodon=AGT;gene_biotype=tRNA;
 NC_001142	tRNAscan-SE	exon	59100	59172	.	-	.	ID=NC_001142.trna24.exon1;Parent=NC_001142.trna24;
 NC_001142	tRNAscan-SE	tRNA	115939	116010	60.3	-	.	ID=NC_001142.trna23;Name=NC_001142.tRNA23-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
@@ -371,7 +362,6 @@ NC_001142	tRNAscan-SE	exon	542956	542991	.	-	.	ID=NC_001142.trna13.exon2;Parent=
 NC_001142	tRNAscan-SE	tRNA	617919	618019	59.5	+	.	ID=NC_001142.trna12;Name=NC_001142.tRNA12-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 NC_001142	tRNAscan-SE	exon	617919	617956	.	+	.	ID=NC_001142.trna12.exon1;Parent=NC_001142.trna12;
 NC_001142	tRNAscan-SE	exon	617976	618019	.	+	.	ID=NC_001142.trna12.exon2;Parent=NC_001142.trna12;
-##gff-version 3
 NC_001143	tRNAscan-SE	tRNA	46735	46806	76.3	-	.	ID=NC_001143.trna16;Name=NC_001143.tRNA16-ThrCGT;isotype=Thr;anticodon=CGT;gene_biotype=tRNA;
 NC_001143	tRNAscan-SE	exon	46735	46806	.	-	.	ID=NC_001143.trna16.exon1;Parent=NC_001143.trna16;
 NC_001143	tRNAscan-SE	tRNA	74624	74697	75.7	+	.	ID=NC_001143.trna1;Name=NC_001143.tRNA1-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
@@ -407,7 +397,6 @@ NC_001143	tRNAscan-SE	exon	517988	518060	.	+	.	ID=NC_001143.trna9.exon1;Parent=N
 NC_001143	tRNAscan-SE	tRNA	578965	579060	71.1	+	.	ID=NC_001143.trna10;Name=NC_001143.tRNA10-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
 NC_001143	tRNAscan-SE	exon	578965	579001	.	+	.	ID=NC_001143.trna10.exon1;Parent=NC_001143.trna10;
 NC_001143	tRNAscan-SE	exon	579025	579060	.	+	.	ID=NC_001143.trna10.exon2;Parent=NC_001143.trna10;
-##gff-version 3
 NC_001144	tRNAscan-SE	tRNA	92548	92650	62.1	+	.	ID=NC_001144.trna1;Name=NC_001144.tRNA1-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 NC_001144	tRNAscan-SE	exon	92548	92583	.	+	.	ID=NC_001144.trna1.exon1;Parent=NC_001144.trna1;
 NC_001144	tRNAscan-SE	exon	92615	92650	.	+	.	ID=NC_001144.trna1.exon2;Parent=NC_001144.trna1;
@@ -457,7 +446,6 @@ NC_001144	tRNAscan-SE	tRNA	975983	976056	75.7	-	.	ID=NC_001144.trna13;Name=NC_00
 NC_001144	tRNAscan-SE	exon	975983	976056	.	-	.	ID=NC_001144.trna13.exon1;Parent=NC_001144.trna13;
 NC_001144	tRNAscan-SE	tRNA	1052071	1052144	71.4	-	.	ID=NC_001144.trna12;Name=NC_001144.tRNA12-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 NC_001144	tRNAscan-SE	exon	1052071	1052144	.	-	.	ID=NC_001144.trna12.exon1;Parent=NC_001144.trna12;
-##gff-version 3
 NC_001145	tRNAscan-SE	tRNA	131825	131896	67.4	-	.	ID=NC_001145.trna21;Name=NC_001145.tRNA21-ArgTCT;isotype=Arg;anticodon=TCT;gene_biotype=tRNA;
 NC_001145	tRNAscan-SE	exon	131825	131896	.	-	.	ID=NC_001145.trna21.exon1;Parent=NC_001145.trna21;
 NC_001145	tRNAscan-SE	tRNA	168795	168883	61.3	+	.	ID=NC_001145.trna1;Name=NC_001145.tRNA1-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
@@ -506,7 +494,6 @@ NC_001145	tRNAscan-SE	exon	808246	808317	.	-	.	ID=NC_001145.trna8.exon1;Parent=N
 NC_001145	tRNAscan-SE	tRNA	837928	838016	61.3	+	.	ID=NC_001145.trna7;Name=NC_001145.tRNA7-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 NC_001145	tRNAscan-SE	exon	837928	837966	.	+	.	ID=NC_001145.trna7.exon1;Parent=NC_001145.trna7;
 NC_001145	tRNAscan-SE	exon	837981	838016	.	+	.	ID=NC_001145.trna7.exon2;Parent=NC_001145.trna7;
-##gff-version 3
 NC_001146	tRNAscan-SE	tRNA	96241	96312	58.7	-	.	ID=NC_001146.trna14;Name=NC_001146.tRNA14-GlyTCC;isotype=Gly;anticodon=TCC;gene_biotype=tRNA;
 NC_001146	tRNAscan-SE	exon	96241	96312	.	-	.	ID=NC_001146.trna14.exon1;Parent=NC_001146.trna14;
 NC_001146	tRNAscan-SE	tRNA	102716	102789	75.7	+	.	ID=NC_001146.trna1;Name=NC_001146.tRNA1-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
@@ -539,7 +526,6 @@ NC_001146	tRNAscan-SE	tRNA	632599	632672	75.7	+	.	ID=NC_001146.trna8;Name=NC_001
 NC_001146	tRNAscan-SE	exon	632599	632672	.	+	.	ID=NC_001146.trna8.exon1;Parent=NC_001146.trna8;
 NC_001146	tRNAscan-SE	tRNA	726134	726217	75.1	-	.	ID=NC_001146.trna9;Name=NC_001146.tRNA9-LeuTAA;isotype=Leu;anticodon=TAA;gene_biotype=tRNA;
 NC_001146	tRNAscan-SE	exon	726134	726217	.	-	.	ID=NC_001146.trna9.exon1;Parent=NC_001146.trna9;
-##gff-version 3
 NC_001147	tRNAscan-SE	tRNA	110962	111033	58.7	-	.	ID=NC_001147.trna20;Name=NC_001147.tRNA20-GlyTCC;isotype=Gly;anticodon=TCC;gene_biotype=tRNA;
 NC_001147	tRNAscan-SE	exon	110962	111033	.	-	.	ID=NC_001147.trna20.exon1;Parent=NC_001147.trna20;
 NC_001147	tRNAscan-SE	tRNA	113802	113874	76.0	+	.	ID=NC_001147.trna1;Name=NC_001147.tRNA1-ThrAGT;isotype=Thr;anticodon=AGT;gene_biotype=tRNA;
@@ -586,7 +572,6 @@ NC_001147	tRNAscan-SE	exon	976421	976493	.	+	.	ID=NC_001147.trna12.exon1;Parent=
 NC_001147	tRNAscan-SE	tRNA	980683	980787	58.2	+	.	ID=NC_001147.trna13;Name=NC_001147.tRNA13-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 NC_001147	tRNAscan-SE	exon	980683	980718	.	+	.	ID=NC_001147.trna13.exon1;Parent=NC_001147.trna13;
 NC_001147	tRNAscan-SE	exon	980752	980787	.	+	.	ID=NC_001147.trna13.exon2;Parent=NC_001147.trna13;
-##gff-version 3
 NC_001148	tRNAscan-SE	tRNA	56169	56274	67.2	-	.	ID=NC_001148.trna17;Name=NC_001148.tRNA17-TrpCCA;isotype=Trp;anticodon=CCA;gene_biotype=tRNA;
 NC_001148	tRNAscan-SE	exon	56239	56274	.	-	.	ID=NC_001148.trna17.exon1;Parent=NC_001148.trna17;
 NC_001148	tRNAscan-SE	exon	56169	56204	.	-	.	ID=NC_001148.trna17.exon2;Parent=NC_001148.trna17;

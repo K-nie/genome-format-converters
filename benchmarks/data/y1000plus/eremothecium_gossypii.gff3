@@ -62,7 +62,6 @@ AE016814	tRNAscan-SE	tRNA	690282	690354	83.3	-	.	ID=AE016814.trna17;Name=AE01681
 AE016814	tRNAscan-SE	exon	690282	690354	.	-	.	ID=AE016814.trna17.exon1;Parent=AE016814.trna17;
 AE016814	tRNAscan-SE	tRNA	691900	691970	61.8	+	.	ID=AE016814.trna16;Name=AE016814.tRNA16-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;
 AE016814	tRNAscan-SE	exon	691900	691970	.	+	.	ID=AE016814.trna16.exon1;Parent=AE016814.trna16;
-##gff-version 3
 AE016815	tRNAscan-SE	tRNA	183436	183520	65.5	-	.	ID=AE016815.trna14;Name=AE016815.tRNA14-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 AE016815	tRNAscan-SE	exon	183482	183520	.	-	.	ID=AE016815.trna14.exon1;Parent=AE016815.trna14;
 AE016815	tRNAscan-SE	exon	183436	183471	.	-	.	ID=AE016815.trna14.exon2;Parent=AE016815.trna14;
@@ -94,7 +93,6 @@ AE016815	tRNAscan-SE	tRNA	757926	757997	62.5	+	.	ID=AE016815.trna7;Name=AE016815
 AE016815	tRNAscan-SE	exon	757926	757997	.	+	.	ID=AE016815.trna7.exon1;Parent=AE016815.trna7;
 AE016815	tRNAscan-SE	tRNA	854472	854543	62.5	-	.	ID=AE016815.trna8;Name=AE016815.tRNA8-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
 AE016815	tRNAscan-SE	exon	854472	854543	.	-	.	ID=AE016815.trna8.exon1;Parent=AE016815.trna8;
-##gff-version 3
 AE016816	tRNAscan-SE	tRNA	7554	7635	79.6	+	.	ID=AE016816.trna1;Name=AE016816.tRNA1-SerAGA;isotype=Ser;anticodon=AGA;gene_biotype=tRNA;
 AE016816	tRNAscan-SE	exon	7554	7635	.	+	.	ID=AE016816.trna1.exon1;Parent=AE016816.trna1;
 AE016816	tRNAscan-SE	tRNA	37262	37333	52.6	-	.	ID=AE016816.trna14;Name=AE016816.tRNA14-ArgCCG;isotype=Arg;anticodon=CCG;gene_biotype=tRNA;
@@ -125,7 +123,6 @@ AE016816	tRNAscan-SE	exon	661662	661698	.	-	.	ID=AE016816.trna8.exon1;Parent=AE0
 AE016816	tRNAscan-SE	exon	661605	661649	.	-	.	ID=AE016816.trna8.exon2;Parent=AE016816.trna8;
 AE016816	tRNAscan-SE	tRNA	750890	750961	64.9	+	.	ID=AE016816.trna7;Name=AE016816.tRNA7-GlyTCC;isotype=Gly;anticodon=TCC;gene_biotype=tRNA;
 AE016816	tRNAscan-SE	exon	750890	750961	.	+	.	ID=AE016816.trna7.exon1;Parent=AE016816.trna7;
-##gff-version 3
 AE016817	tRNAscan-SE	tRNA	10299	10388	59.5	+	.	ID=AE016817.trna1;Name=AE016817.tRNA1-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 AE016817	tRNAscan-SE	exon	10299	10335	.	+	.	ID=AE016817.trna1.exon1;Parent=AE016817.trna1;
 AE016817	tRNAscan-SE	exon	10345	10388	.	+	.	ID=AE016817.trna1.exon2;Parent=AE016817.trna1;
@@ -197,7 +194,6 @@ AE016817	tRNAscan-SE	tRNA	1299443	1299515	83.3	-	.	ID=AE016817.trna13;Name=AE016
 AE016817	tRNAscan-SE	exon	1299443	1299515	.	-	.	ID=AE016817.trna13.exon1;Parent=AE016817.trna13;
 AE016817	tRNAscan-SE	tRNA	1366756	1366828	73.9	-	.	ID=AE016817.trna12;Name=AE016817.tRNA12-MetCAT;isotype=Met;anticodon=CAT;gene_biotype=tRNA;
 AE016817	tRNAscan-SE	exon	1366756	1366828	.	-	.	ID=AE016817.trna12.exon1;Parent=AE016817.trna12;
-##gff-version 3
 AE016818	tRNAscan-SE	tRNA	49710	49783	67.6	+	.	ID=AE016818.trna1;Name=AE016818.tRNA1-ValAAC;isotype=Val;anticodon=AAC;gene_biotype=tRNA;
 AE016818	tRNAscan-SE	exon	49710	49783	.	+	.	ID=AE016818.trna1.exon1;Parent=AE016818.trna1;
 AE016818	tRNAscan-SE	tRNA	50062	50133	64.5	+	.	ID=AE016818.trna2;Name=AE016818.tRNA2-AspGTC;isotype=Asp;anticodon=GTC;gene_biotype=tRNA;
@@ -282,7 +278,6 @@ AE016818	tRNAscan-SE	exon	1514751	1514824	.	+	.	ID=AE016818.trna22.exon1;Parent=
 AE016818	tRNAscan-SE	tRNA	1515119	1515208	59.5	-	.	ID=AE016818.trna23;Name=AE016818.tRNA23-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 AE016818	tRNAscan-SE	exon	1515172	1515208	.	-	.	ID=AE016818.trna23.exon1;Parent=AE016818.trna23;
 AE016818	tRNAscan-SE	exon	1515119	1515162	.	-	.	ID=AE016818.trna23.exon2;Parent=AE016818.trna23;
-##gff-version 3
 AE016819	tRNAscan-SE	tRNA	44965	45049	65.5	-	.	ID=AE016819.trna46;Name=AE016819.tRNA46-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 AE016819	tRNAscan-SE	exon	45011	45049	.	-	.	ID=AE016819.trna46.exon1;Parent=AE016819.trna46;
 AE016819	tRNAscan-SE	exon	44965	45000	.	-	.	ID=AE016819.trna46.exon2;Parent=AE016819.trna46;
@@ -393,7 +388,6 @@ AE016819	tRNAscan-SE	exon	1821157	1821230	.	+	.	ID=AE016819.trna21.exon1;Parent=
 AE016819	tRNAscan-SE	tRNA	1826306	1826395	59.5	-	.	ID=AE016819.trna22;Name=AE016819.tRNA22-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 AE016819	tRNAscan-SE	exon	1826359	1826395	.	-	.	ID=AE016819.trna22.exon1;Parent=AE016819.trna22;
 AE016819	tRNAscan-SE	exon	1826306	1826349	.	-	.	ID=AE016819.trna22.exon2;Parent=AE016819.trna22;
-##gff-version 3
 AE016820	tRNAscan-SE	tRNA	30795	30907	57.3	-	.	ID=AE016820.trna24;Name=AE016820.tRNA24-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 AE016820	tRNAscan-SE	exon	30872	30907	.	-	.	ID=AE016820.trna24.exon1;Parent=AE016820.trna24;
 AE016820	tRNAscan-SE	exon	30795	30830	.	-	.	ID=AE016820.trna24.exon2;Parent=AE016820.trna24;

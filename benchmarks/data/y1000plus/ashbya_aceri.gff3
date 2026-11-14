@@ -71,7 +71,6 @@ CP006020.1	tRNAscan-SE	tRNA	757365	757436	64.5	-	.	ID=CP006020.1.trna18;Name=CP0
 CP006020.1	tRNAscan-SE	exon	757365	757436	.	-	.	ID=CP006020.1.trna18.exon1;Parent=CP006020.1.trna18;
 CP006020.1	tRNAscan-SE	tRNA	757651	757724	67.6	-	.	ID=CP006020.1.trna17;Name=CP006020.1.tRNA17-ValAAC;isotype=Val;anticodon=AAC;gene_biotype=tRNA;
 CP006020.1	tRNAscan-SE	exon	757651	757724	.	-	.	ID=CP006020.1.trna17.exon1;Parent=CP006020.1.trna17;
-##gff-version 3
 CP006021.1	tRNAscan-SE	tRNA	192349	192432	65.6	-	.	ID=CP006021.1.trna16;Name=CP006021.1.tRNA16-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 CP006021.1	tRNAscan-SE	exon	192394	192432	.	-	.	ID=CP006021.1.trna16.exon1;Parent=CP006021.1.trna16;
 CP006021.1	tRNAscan-SE	exon	192349	192384	.	-	.	ID=CP006021.1.trna16.exon2;Parent=CP006021.1.trna16;
@@ -109,7 +108,6 @@ CP006021.1	tRNAscan-SE	exon	869110	869182	.	-	.	ID=CP006021.1.trna10.exon1;Paren
 CP006021.1	tRNAscan-SE	tRNA	917260	917348	70.8	-	.	ID=CP006021.1.trna9;Name=CP006021.1.tRNA9-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;
 CP006021.1	tRNAscan-SE	exon	917312	917348	.	-	.	ID=CP006021.1.trna9.exon1;Parent=CP006021.1.trna9;
 CP006021.1	tRNAscan-SE	exon	917260	917295	.	-	.	ID=CP006021.1.trna9.exon2;Parent=CP006021.1.trna9;
-##gff-version 3
 CP006022.1	tRNAscan-SE	tRNA	8437	8526	59.5	-	.	ID=CP006022.1.trna29;Name=CP006022.1.tRNA29-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 CP006022.1	tRNAscan-SE	exon	8490	8526	.	-	.	ID=CP006022.1.trna29.exon1;Parent=CP006022.1.trna29;
 CP006022.1	tRNAscan-SE	exon	8437	8480	.	-	.	ID=CP006022.1.trna29.exon2;Parent=CP006022.1.trna29;
@@ -175,7 +173,6 @@ CP006022.1	tRNAscan-SE	tRNA	1401356	1401427	64.9	+	.	ID=CP006022.1.trna11;Name=C
 CP006022.1	tRNAscan-SE	exon	1401356	1401427	.	+	.	ID=CP006022.1.trna11.exon1;Parent=CP006022.1.trna11;
 CP006022.1	tRNAscan-SE	tRNA	1488225	1488296	62.5	-	.	ID=CP006022.1.trna12;Name=CP006022.1.tRNA12-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
 CP006022.1	tRNAscan-SE	exon	1488225	1488296	.	-	.	ID=CP006022.1.trna12.exon1;Parent=CP006022.1.trna12;
-##gff-version 3
 CP006023.1	tRNAscan-SE	tRNA	273	362	59.5	+	.	ID=CP006023.1.trna1;Name=CP006023.1.tRNA1-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 CP006023.1	tRNAscan-SE	exon	273	309	.	+	.	ID=CP006023.1.trna1.exon1;Parent=CP006023.1.trna1;
 CP006023.1	tRNAscan-SE	exon	319	362	.	+	.	ID=CP006023.1.trna1.exon2;Parent=CP006023.1.trna1;
@@ -247,7 +244,6 @@ CP006023.1	tRNAscan-SE	tRNA	947236	947308	83.3	-	.	ID=CP006023.1.trna13;Name=CP0
 CP006023.1	tRNAscan-SE	exon	947236	947308	.	-	.	ID=CP006023.1.trna13.exon1;Parent=CP006023.1.trna13;
 CP006023.1	tRNAscan-SE	tRNA	998380	998452	73.9	-	.	ID=CP006023.1.trna12;Name=CP006023.1.tRNA12-MetCAT;isotype=Met;anticodon=CAT;gene_biotype=tRNA;
 CP006023.1	tRNAscan-SE	exon	998380	998452	.	-	.	ID=CP006023.1.trna12.exon1;Parent=CP006023.1.trna12;
-##gff-version 3
 CP006024.1	tRNAscan-SE	tRNA	209	279	61.8	-	.	ID=CP006024.1.trna33;Name=CP006024.1.tRNA33-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;
 CP006024.1	tRNAscan-SE	exon	209	279	.	-	.	ID=CP006024.1.trna33.exon1;Parent=CP006024.1.trna33;
 CP006024.1	tRNAscan-SE	tRNA	543	615	83.3	+	.	ID=CP006024.1.trna1;Name=CP006024.1.tRNA1-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
@@ -322,7 +318,6 @@ CP006024.1	tRNAscan-SE	exon	1382323	1382395	.	+	.	ID=CP006024.1.trna16.exon1;Par
 CP006024.1	tRNAscan-SE	tRNA	1396926	1397161	51.9	-	.	ID=CP006024.1.trna17;Name=CP006024.1.tRNA17-LeuCAG;isotype=Leu;anticodon=CAG;gene_biotype=tRNA;
 CP006024.1	tRNAscan-SE	exon	1397125	1397161	.	-	.	ID=CP006024.1.trna17.exon1;Parent=CP006024.1.trna17;
 CP006024.1	tRNAscan-SE	exon	1396926	1396974	.	-	.	ID=CP006024.1.trna17.exon2;Parent=CP006024.1.trna17;
-##gff-version 3
 CP006025.1	tRNAscan-SE	tRNA	16872	16984	57.3	-	.	ID=CP006025.1.trna33;Name=CP006025.1.tRNA33-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 CP006025.1	tRNAscan-SE	exon	16949	16984	.	-	.	ID=CP006025.1.trna33.exon1;Parent=CP006025.1.trna33;
 CP006025.1	tRNAscan-SE	exon	16872	16907	.	-	.	ID=CP006025.1.trna33.exon2;Parent=CP006025.1.trna33;
@@ -401,7 +396,6 @@ CP006025.1	tRNAscan-SE	tRNA	1300417	1300488	52.6	+	.	ID=CP006025.1.trna12;Name=C
 CP006025.1	tRNAscan-SE	exon	1300417	1300488	.	+	.	ID=CP006025.1.trna12.exon1;Parent=CP006025.1.trna12;
 CP006025.1	tRNAscan-SE	tRNA	1326522	1326603	79.6	-	.	ID=CP006025.1.trna13;Name=CP006025.1.tRNA13-SerAGA;isotype=Ser;anticodon=AGA;gene_biotype=tRNA;
 CP006025.1	tRNAscan-SE	exon	1326522	1326603	.	-	.	ID=CP006025.1.trna13.exon1;Parent=CP006025.1.trna13;
-##gff-version 3
 CP006026.1	tRNAscan-SE	tRNA	204924	204997	70.6	+	.	ID=CP006026.1.trna1;Name=CP006026.1.tRNA1-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 CP006026.1	tRNAscan-SE	exon	204924	204997	.	+	.	ID=CP006026.1.trna1.exon1;Parent=CP006026.1.trna1;
 CP006026.1	tRNAscan-SE	tRNA	247301	247374	76.1	+	.	ID=CP006026.1.trna2;Name=CP006026.1.tRNA2-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
@@ -446,7 +440,6 @@ CP006026.1	tRNAscan-SE	exon	1439734	1439806	.	+	.	ID=CP006026.1.trna8.exon1;Pare
 CP006026.1	tRNAscan-SE	tRNA	1550168	1550252	65.5	+	.	ID=CP006026.1.trna9;Name=CP006026.1.tRNA9-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 CP006026.1	tRNAscan-SE	exon	1550168	1550206	.	+	.	ID=CP006026.1.trna9.exon1;Parent=CP006026.1.trna9;
 CP006026.1	tRNAscan-SE	exon	1550217	1550252	.	+	.	ID=CP006026.1.trna9.exon2;Parent=CP006026.1.trna9;
-##gff-version 3
 CP006258.1	tRNAscan-SE	tRNA	500	572	53.2	+	.	ID=CP006258.1.trna1;Name=CP006258.1.tRNA1-ValTAC;isotype=Val;anticodon=TAC;gene_biotype=tRNA;
 CP006258.1	tRNAscan-SE	exon	500	572	.	+	.	ID=CP006258.1.trna1.exon1;Parent=CP006258.1.trna1;
 CP006258.1	tRNAscan-SE	tRNA	5406	5477	56.6	+	.	ID=CP006258.1.trna2;Name=CP006258.1.tRNA2-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;

@@ -363,7 +363,6 @@ YALI0A	tRNAscan-SE	exon	2032027	2032062	.	+	.	ID=YALI0A.trna68.exon2;Parent=YALI
 YALI0A	tRNAscan-SE	tRNA	2177544	2177634	64.7	+	.	ID=YALI0A.trna69;Name=YALI0A.tRNA69-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 YALI0A	tRNAscan-SE	exon	2177544	2177581	.	+	.	ID=YALI0A.trna69.exon1;Parent=YALI0A.trna69;
 YALI0A	tRNAscan-SE	exon	2177599	2177634	.	+	.	ID=YALI0A.trna69.exon2;Parent=YALI0A.trna69;
-##gff-version 3
 YALI0B	tRNAscan-SE	tRNA	11784	11857	63.3	+	.	ID=YALI0B.trna1;Name=YALI0B.tRNA1-AlaAGC;isotype=Ala;anticodon=AGC;gene_biotype=tRNA;
 YALI0B	tRNAscan-SE	exon	11784	11857	.	+	.	ID=YALI0B.trna1.exon1;Parent=YALI0B.trna1;
 YALI0B	tRNAscan-SE	tRNA	25708	25788	53.8	+	.	ID=YALI0B.trna2;Name=YALI0B.tRNA2-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
@@ -517,7 +516,6 @@ YALI0B	tRNAscan-SE	tRNA	2882284	2882357	74.3	-	.	ID=YALI0B.trna30;Name=YALI0B.tR
 YALI0B	tRNAscan-SE	exon	2882284	2882357	.	-	.	ID=YALI0B.trna30.exon1;Parent=YALI0B.trna30;
 YALI0B	tRNAscan-SE	tRNA	2938459	2938531	67.2	+	.	ID=YALI0B.trna29;Name=YALI0B.tRNA29-ValCAC;isotype=Val;anticodon=CAC;gene_biotype=tRNA;
 YALI0B	tRNAscan-SE	exon	2938459	2938531	.	+	.	ID=YALI0B.trna29.exon1;Parent=YALI0B.trna29;
-##gff-version 3
 YALI0C	tRNAscan-SE	tRNA	72483	72554	65.3	+	.	ID=YALI0C.trna1;Name=YALI0C.tRNA1-iMetCAT;isotype=iMet;anticodon=CAT;gene_biotype=tRNA;
 YALI0C	tRNAscan-SE	exon	72483	72554	.	+	.	ID=YALI0C.trna1.exon1;Parent=YALI0C.trna1;
 YALI0C	tRNAscan-SE	tRNA	213068	213148	56.3	-	.	ID=YALI0C.trna90;Name=YALI0C.tRNA90-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
@@ -748,7 +746,6 @@ YALI0C	tRNAscan-SE	tRNA	3062739	3062809	63.9	-	.	ID=YALI0C.trna54;Name=YALI0C.tR
 YALI0C	tRNAscan-SE	exon	3062739	3062809	.	-	.	ID=YALI0C.trna54.exon1;Parent=YALI0C.trna54;
 YALI0C	tRNAscan-SE	tRNA	3089347	3089420	65.1	-	.	ID=YALI0C.trna53;Name=YALI0C.tRNA53-ValAAC;isotype=Val;anticodon=AAC;gene_biotype=tRNA;
 YALI0C	tRNAscan-SE	exon	3089347	3089420	.	-	.	ID=YALI0C.trna53.exon1;Parent=YALI0C.trna53;
-##gff-version 3
 YALI0D	tRNAscan-SE	tRNA	53373	53444	69.9	+	.	ID=YALI0D.trna1;Name=YALI0D.tRNA1-ArgACG;isotype=Arg;anticodon=ACG;gene_biotype=tRNA;
 YALI0D	tRNAscan-SE	exon	53373	53444	.	+	.	ID=YALI0D.trna1.exon1;Parent=YALI0D.trna1;
 YALI0D	tRNAscan-SE	tRNA	198779	198861	77.2	+	.	ID=YALI0D.trna2;Name=YALI0D.tRNA2-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
@@ -905,7 +902,6 @@ YALI0D	tRNAscan-SE	exon	3375865	3375938	.	+	.	ID=YALI0D.trna38.exon1;Parent=YALI
 YALI0D	tRNAscan-SE	tRNA	3463162	3463242	56.3	-	.	ID=YALI0D.trna39;Name=YALI0D.tRNA39-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
 YALI0D	tRNAscan-SE	exon	3463206	3463242	.	-	.	ID=YALI0D.trna39.exon1;Parent=YALI0D.trna39;
 YALI0D	tRNAscan-SE	exon	3463162	3463196	.	-	.	ID=YALI0D.trna39.exon2;Parent=YALI0D.trna39;
-##gff-version 3
 YALI0E	tRNAscan-SE	tRNA	36748	36828	56.3	+	.	ID=YALI0E.trna1;Name=YALI0E.tRNA1-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
 YALI0E	tRNAscan-SE	exon	36748	36784	.	+	.	ID=YALI0E.trna1.exon1;Parent=YALI0E.trna1;
 YALI0E	tRNAscan-SE	exon	36794	36828	.	+	.	ID=YALI0E.trna1.exon2;Parent=YALI0E.trna1;
@@ -1133,7 +1129,6 @@ YALI0E	tRNAscan-SE	exon	3585660	3585694	.	+	.	ID=YALI0E.trna44.exon2;Parent=YALI
 YALI0E	tRNAscan-SE	tRNA	3920800	3920888	57.9	+	.	ID=YALI0E.trna45;Name=YALI0E.tRNA45-ArgTCG;isotype=Arg;anticodon=TCG;gene_biotype=tRNA;
 YALI0E	tRNAscan-SE	exon	3920800	3920835	.	+	.	ID=YALI0E.trna45.exon1;Parent=YALI0E.trna45;
 YALI0E	tRNAscan-SE	exon	3920853	3920888	.	+	.	ID=YALI0E.trna45.exon2;Parent=YALI0E.trna45;
-##gff-version 3
 YALI0F	tRNAscan-SE	tRNA	210086	210170	55.4	+	.	ID=YALI0F.trna1;Name=YALI0F.tRNA1-GlnCTG;isotype=Gln;anticodon=CTG;gene_biotype=tRNA;
 YALI0F	tRNAscan-SE	exon	210086	210122	.	+	.	ID=YALI0F.trna1.exon1;Parent=YALI0F.trna1;
 YALI0F	tRNAscan-SE	exon	210136	210170	.	+	.	ID=YALI0F.trna1.exon2;Parent=YALI0F.trna1;

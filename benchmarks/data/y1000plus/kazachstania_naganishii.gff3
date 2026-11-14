@@ -33,7 +33,6 @@ HE978314	tRNAscan-SE	tRNA	1191654	1191725	76.8	+	.	ID=HE978314.trna5;Name=HE9783
 HE978314	tRNAscan-SE	exon	1191654	1191725	.	+	.	ID=HE978314.trna5.exon1;Parent=HE978314.trna5;
 HE978314	tRNAscan-SE	tRNA	1250231	1250304	76.1	+	.	ID=HE978314.trna6;Name=HE978314.tRNA6-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
 HE978314	tRNAscan-SE	exon	1250231	1250304	.	+	.	ID=HE978314.trna6.exon1;Parent=HE978314.trna6;
-##gff-version 3
 HE978315	tRNAscan-SE	tRNA	25320	25391	68.5	-	.	ID=HE978315.trna30;Name=HE978315.tRNA30-ThrCGT;isotype=Thr;anticodon=CGT;gene_biotype=tRNA;
 HE978315	tRNAscan-SE	exon	25320	25391	.	-	.	ID=HE978315.trna30.exon1;Parent=HE978315.trna30;
 HE978315	tRNAscan-SE	tRNA	39684	39780	61.9	+	.	ID=HE978315.trna1;Name=HE978315.tRNA1-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
@@ -103,7 +102,6 @@ HE978315	tRNAscan-SE	exon	1286065	1286138	.	+	.	ID=HE978315.trna14.exon1;Parent=
 HE978315	tRNAscan-SE	tRNA	1348961	1349064	66.0	+	.	ID=HE978315.trna15;Name=HE978315.tRNA15-TrpCCA;isotype=Trp;anticodon=CCA;gene_biotype=tRNA;
 HE978315	tRNAscan-SE	exon	1348961	1348996	.	+	.	ID=HE978315.trna15.exon1;Parent=HE978315.trna15;
 HE978315	tRNAscan-SE	exon	1349029	1349064	.	+	.	ID=HE978315.trna15.exon2;Parent=HE978315.trna15;
-##gff-version 3
 HE978316	tRNAscan-SE	tRNA	299840	299912	70.6	+	.	ID=HE978316.trna1;Name=HE978316.tRNA1-ArgACG;isotype=Arg;anticodon=ACG;gene_biotype=tRNA;
 HE978316	tRNAscan-SE	exon	299840	299912	.	+	.	ID=HE978316.trna1.exon1;Parent=HE978316.trna1;
 HE978316	tRNAscan-SE	tRNA	420603	420697	60.4	+	.	ID=HE978316.trna2;Name=HE978316.tRNA2-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
@@ -125,7 +123,6 @@ HE978316	tRNAscan-SE	exon	1221535	1221606	.	-	.	ID=HE978316.trna7.exon1;Parent=H
 HE978316	tRNAscan-SE	tRNA	1240811	1240906	71.1	+	.	ID=HE978316.trna6;Name=HE978316.tRNA6-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
 HE978316	tRNAscan-SE	exon	1240811	1240847	.	+	.	ID=HE978316.trna6.exon1;Parent=HE978316.trna6;
 HE978316	tRNAscan-SE	exon	1240871	1240906	.	+	.	ID=HE978316.trna6.exon2;Parent=HE978316.trna6;
-##gff-version 3
 HE978317	tRNAscan-SE	tRNA	221266	221363	55.7	-	.	ID=HE978317.trna11;Name=HE978317.tRNA11-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 HE978317	tRNAscan-SE	exon	221326	221363	.	-	.	ID=HE978317.trna11.exon1;Parent=HE978317.trna11;
 HE978317	tRNAscan-SE	exon	221266	221309	.	-	.	ID=HE978317.trna11.exon2;Parent=HE978317.trna11;
@@ -154,7 +151,6 @@ HE978317	tRNAscan-SE	exon	779193	779229	.	-	.	ID=HE978317.trna4.exon1;Parent=HE9
 HE978317	tRNAscan-SE	exon	779134	779169	.	-	.	ID=HE978317.trna4.exon2;Parent=HE978317.trna4;
 HE978317	tRNAscan-SE	tRNA	855120	855192	82.1	+	.	ID=HE978317.trna3;Name=HE978317.tRNA3-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
 HE978317	tRNAscan-SE	exon	855120	855192	.	+	.	ID=HE978317.trna3.exon1;Parent=HE978317.trna3;
-##gff-version 3
 HE978318	tRNAscan-SE	tRNA	151544	151614	62.0	+	.	ID=HE978318.trna1;Name=HE978318.tRNA1-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;
 HE978318	tRNAscan-SE	exon	151544	151614	.	+	.	ID=HE978318.trna1.exon1;Parent=HE978318.trna1;
 HE978318	tRNAscan-SE	tRNA	173107	173178	59.5	-	.	ID=HE978318.trna15;Name=HE978318.tRNA15-AspGTC;isotype=Asp;anticodon=GTC;gene_biotype=tRNA;
@@ -185,7 +181,6 @@ HE978318	tRNAscan-SE	tRNA	761849	761922	76.1	-	.	ID=HE978318.trna9;Name=HE978318
 HE978318	tRNAscan-SE	exon	761849	761922	.	-	.	ID=HE978318.trna9.exon1;Parent=HE978318.trna9;
 HE978318	tRNAscan-SE	tRNA	809038	809109	55.4	+	.	ID=HE978318.trna8;Name=HE978318.tRNA8-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
 HE978318	tRNAscan-SE	exon	809038	809109	.	+	.	ID=HE978318.trna8.exon1;Parent=HE978318.trna8;
-##gff-version 3
 HE978319	tRNAscan-SE	tRNA	458100	458202	58.9	+	.	ID=HE978319.trna1;Name=HE978319.tRNA1-TrpCCA;isotype=Trp;anticodon=CCA;gene_biotype=tRNA;
 HE978319	tRNAscan-SE	exon	458100	458135	.	+	.	ID=HE978319.trna1.exon1;Parent=HE978319.trna1;
 HE978319	tRNAscan-SE	exon	458167	458202	.	+	.	ID=HE978319.trna1.exon2;Parent=HE978319.trna1;
@@ -206,7 +201,6 @@ HE978319	tRNAscan-SE	tRNA	619304	619375	59.5	-	.	ID=HE978319.trna8;Name=HE978319
 HE978319	tRNAscan-SE	exon	619304	619375	.	-	.	ID=HE978319.trna8.exon1;Parent=HE978319.trna8;
 HE978319	tRNAscan-SE	tRNA	619394	619465	68.9	-	.	ID=HE978319.trna7;Name=HE978319.tRNA7-ArgTCT;isotype=Arg;anticodon=TCT;gene_biotype=tRNA;
 HE978319	tRNAscan-SE	exon	619394	619465	.	-	.	ID=HE978319.trna7.exon1;Parent=HE978319.trna7;
-##gff-version 3
 HE978320	tRNAscan-SE	tRNA	52498	52595	62.7	+	.	ID=HE978320.trna1;Name=HE978320.tRNA1-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 HE978320	tRNAscan-SE	exon	52498	52536	.	+	.	ID=HE978320.trna1.exon1;Parent=HE978320.trna1;
 HE978320	tRNAscan-SE	exon	52560	52595	.	+	.	ID=HE978320.trna1.exon2;Parent=HE978320.trna1;
@@ -228,7 +222,6 @@ HE978320	tRNAscan-SE	tRNA	346326	346399	67.6	-	.	ID=HE978320.trna6;Name=HE978320
 HE978320	tRNAscan-SE	exon	346326	346399	.	-	.	ID=HE978320.trna6.exon1;Parent=HE978320.trna6;
 HE978320	tRNAscan-SE	tRNA	536993	537065	70.6	+	.	ID=HE978320.trna5;Name=HE978320.tRNA5-ArgACG;isotype=Arg;anticodon=ACG;gene_biotype=tRNA;
 HE978320	tRNAscan-SE	exon	536993	537065	.	+	.	ID=HE978320.trna5.exon1;Parent=HE978320.trna5;
-##gff-version 3
 HE978321	tRNAscan-SE	tRNA	68425	68528	66.0	+	.	ID=HE978321.trna1;Name=HE978321.tRNA1-TrpCCA;isotype=Trp;anticodon=CCA;gene_biotype=tRNA;
 HE978321	tRNAscan-SE	exon	68425	68460	.	+	.	ID=HE978321.trna1.exon1;Parent=HE978321.trna1;
 HE978321	tRNAscan-SE	exon	68493	68528	.	+	.	ID=HE978321.trna1.exon2;Parent=HE978321.trna1;
@@ -253,7 +246,6 @@ HE978321	tRNAscan-SE	exon	516352	516387	.	+	.	ID=HE978321.trna6.exon1;Parent=HE9
 HE978321	tRNAscan-SE	exon	516425	516460	.	+	.	ID=HE978321.trna6.exon2;Parent=HE978321.trna6;
 HE978321	tRNAscan-SE	tRNA	569115	569186	65.3	-	.	ID=HE978321.trna7;Name=HE978321.tRNA7-GlnTTG;isotype=Gln;anticodon=TTG;gene_biotype=tRNA;
 HE978321	tRNAscan-SE	exon	569115	569186	.	-	.	ID=HE978321.trna7.exon1;Parent=HE978321.trna7;
-##gff-version 3
 HE978322	tRNAscan-SE	tRNA	154758	154831	67.6	+	.	ID=HE978322.trna1;Name=HE978322.tRNA1-ValAAC;isotype=Val;anticodon=AAC;gene_biotype=tRNA;
 HE978322	tRNAscan-SE	exon	154758	154831	.	+	.	ID=HE978322.trna1.exon1;Parent=HE978322.trna1;
 HE978322	tRNAscan-SE	tRNA	210661	210734	76.1	-	.	ID=HE978322.trna12;Name=HE978322.tRNA12-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
@@ -282,7 +274,6 @@ HE978322	tRNAscan-SE	exon	567245	567289	.	-	.	ID=HE978322.trna6.exon2;Parent=HE9
 HE978322	tRNAscan-SE	tRNA	572351	572456	56.6	+	.	ID=HE978322.trna5;Name=HE978322.tRNA5-LeuAAG;isotype=Leu;anticodon=AAG;gene_biotype=tRNA;
 HE978322	tRNAscan-SE	exon	572351	572388	.	+	.	ID=HE978322.trna5.exon1;Parent=HE978322.trna5;
 HE978322	tRNAscan-SE	exon	572413	572456	.	+	.	ID=HE978322.trna5.exon2;Parent=HE978322.trna5;
-##gff-version 3
 HE978323	tRNAscan-SE	tRNA	52049	52120	65.3	+	.	ID=HE978323.trna1;Name=HE978323.tRNA1-GlnCTG;isotype=Gln;anticodon=CTG;gene_biotype=tRNA;
 HE978323	tRNAscan-SE	exon	52049	52120	.	+	.	ID=HE978323.trna1.exon1;Parent=HE978323.trna1;
 HE978323	tRNAscan-SE	tRNA	152191	152273	76.9	+	.	ID=HE978323.trna2;Name=HE978323.tRNA2-LeuTAA;isotype=Leu;anticodon=TAA;gene_biotype=tRNA;
@@ -309,7 +300,6 @@ HE978323	tRNAscan-SE	exon	453870	453952	.	-	.	ID=HE978323.trna9.exon1;Parent=HE9
 HE978323	tRNAscan-SE	tRNA	511856	511953	55.7	+	.	ID=HE978323.trna8;Name=HE978323.tRNA8-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
 HE978323	tRNAscan-SE	exon	511856	511893	.	+	.	ID=HE978323.trna8.exon1;Parent=HE978323.trna8;
 HE978323	tRNAscan-SE	exon	511910	511953	.	+	.	ID=HE978323.trna8.exon2;Parent=HE978323.trna8;
-##gff-version 3
 HE978324	tRNAscan-SE	tRNA	108403	108475	68.0	+	.	ID=HE978324.trna1;Name=HE978324.tRNA1-ThrAGT;isotype=Thr;anticodon=AGT;gene_biotype=tRNA;
 HE978324	tRNAscan-SE	exon	108403	108475	.	+	.	ID=HE978324.trna1.exon1;Parent=HE978324.trna1;
 HE978324	tRNAscan-SE	tRNA	200831	200930	70.4	-	.	ID=HE978324.trna7;Name=HE978324.tRNA7-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;
@@ -325,7 +315,6 @@ HE978324	tRNAscan-SE	tRNA	424218	424291	56.1	-	.	ID=HE978324.trna4;Name=HE978324
 HE978324	tRNAscan-SE	exon	424218	424291	.	-	.	ID=HE978324.trna4.exon1;Parent=HE978324.trna4;
 HE978324	tRNAscan-SE	tRNA	428294	428365	69.1	+	.	ID=HE978324.trna3;Name=HE978324.tRNA3-GlnCTG;isotype=Gln;anticodon=CTG;gene_biotype=tRNA;
 HE978324	tRNAscan-SE	exon	428294	428365	.	+	.	ID=HE978324.trna3.exon1;Parent=HE978324.trna3;
-##gff-version 3
 HE978325	tRNAscan-SE	tRNA	103080	103188	55.8	+	.	ID=HE978325.trna1;Name=HE978325.tRNA1-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 HE978325	tRNAscan-SE	exon	103080	103115	.	+	.	ID=HE978325.trna1.exon1;Parent=HE978325.trna1;
 HE978325	tRNAscan-SE	exon	103153	103188	.	+	.	ID=HE978325.trna1.exon2;Parent=HE978325.trna1;
@@ -341,7 +330,6 @@ HE978325	tRNAscan-SE	tRNA	274294	274375	80.7	-	.	ID=HE978325.trna4;Name=HE978325
 HE978325	tRNAscan-SE	exon	274294	274375	.	-	.	ID=HE978325.trna4.exon1;Parent=HE978325.trna4;
 HE978325	tRNAscan-SE	tRNA	316008	316079	59.7	-	.	ID=HE978325.trna3;Name=HE978325.tRNA3-GluCTC;isotype=Glu;anticodon=CTC;gene_biotype=tRNA;
 HE978325	tRNAscan-SE	exon	316008	316079	.	-	.	ID=HE978325.trna3.exon1;Parent=HE978325.trna3;
-##gff-version 3
 HE978326	tRNAscan-SE	tRNA	77569	77640	55.4	-	.	ID=HE978326.trna12;Name=HE978326.tRNA12-GluTTC;isotype=Glu;anticodon=TTC;gene_biotype=tRNA;
 HE978326	tRNAscan-SE	exon	77569	77640	.	-	.	ID=HE978326.trna12.exon1;Parent=HE978326.trna12;
 HE978326	tRNAscan-SE	tRNA	175878	175948	60.9	-	.	ID=HE978326.trna11;Name=HE978326.tRNA11-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;

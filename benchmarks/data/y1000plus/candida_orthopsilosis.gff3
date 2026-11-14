@@ -37,7 +37,6 @@ NC_018292.1	tRNAscan-SE	exon	2900473	2900518	.	-	.	ID=NC_018292.1.trna8.exon2;Pa
 NC_018292.1	tRNAscan-SE	tRNA	2902038	2902151	59.2	+	.	ID=NC_018292.1.trna7;Name=NC_018292.1.tRNA7-LeuTAA;isotype=Leu;anticodon=TAA;gene_biotype=tRNA;
 NC_018292.1	tRNAscan-SE	exon	2902038	2902075	.	+	.	ID=NC_018292.1.trna7.exon1;Parent=NC_018292.1.trna7;
 NC_018292.1	tRNAscan-SE	exon	2902106	2902151	.	+	.	ID=NC_018292.1.trna7.exon2;Parent=NC_018292.1.trna7;
-##gff-version 3
 NC_018295.1	tRNAscan-SE	tRNA	272378	272449	57.7	-	.	ID=NC_018295.1.trna20;Name=NC_018295.1.tRNA20-AspGTC;isotype=Asp;anticodon=GTC;gene_biotype=tRNA;
 NC_018295.1	tRNAscan-SE	exon	272378	272449	.	-	.	ID=NC_018295.1.trna20.exon1;Parent=NC_018295.1.trna20;
 NC_018295.1	tRNAscan-SE	tRNA	350086	350179	67.7	-	.	ID=NC_018295.1.trna19;Name=NC_018295.1.tRNA19-SerTGA;isotype=Ser;anticodon=TGA;gene_biotype=tRNA;
@@ -85,7 +84,6 @@ NC_018295.1	tRNAscan-SE	tRNA	2257680	2257752	76.5	-	.	ID=NC_018295.1.trna13;Name
 NC_018295.1	tRNAscan-SE	exon	2257680	2257752	.	-	.	ID=NC_018295.1.trna13.exon1;Parent=NC_018295.1.trna13;
 NC_018295.1	tRNAscan-SE	tRNA	2348276	2348348	66.8	+	.	ID=NC_018295.1.trna12;Name=NC_018295.1.tRNA12-AlaAGC;isotype=Ala;anticodon=AGC;gene_biotype=tRNA;
 NC_018295.1	tRNAscan-SE	exon	2348276	2348348	.	+	.	ID=NC_018295.1.trna12.exon1;Parent=NC_018295.1.trna12;
-##gff-version 3
 NC_018296.1	tRNAscan-SE	tRNA	70464	70556	57.6	+	.	ID=NC_018296.1.trna1;Name=NC_018296.1.tRNA1-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
 NC_018296.1	tRNAscan-SE	exon	70464	70502	.	+	.	ID=NC_018296.1.trna1.exon1;Parent=NC_018296.1.trna1;
 NC_018296.1	tRNAscan-SE	exon	70521	70556	.	+	.	ID=NC_018296.1.trna1.exon2;Parent=NC_018296.1.trna1;
@@ -131,7 +129,6 @@ NC_018296.1	tRNAscan-SE	tRNA	1539776	1539848	66.8	+	.	ID=NC_018296.1.trna12;Name
 NC_018296.1	tRNAscan-SE	exon	1539776	1539848	.	+	.	ID=NC_018296.1.trna12.exon1;Parent=NC_018296.1.trna12;
 NC_018296.1	tRNAscan-SE	tRNA	1581668	1581741	71.5	+	.	ID=NC_018296.1.trna13;Name=NC_018296.1.tRNA13-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 NC_018296.1	tRNAscan-SE	exon	1581668	1581741	.	+	.	ID=NC_018296.1.trna13.exon1;Parent=NC_018296.1.trna13;
-##gff-version 3
 NC_018297.1	tRNAscan-SE	tRNA	221201	221293	69.1	-	.	ID=NC_018297.1.trna15;Name=NC_018297.1.tRNA15-MetCAT;isotype=Met;anticodon=CAT;gene_biotype=tRNA;
 NC_018297.1	tRNAscan-SE	exon	221256	221293	.	-	.	ID=NC_018297.1.trna15.exon1;Parent=NC_018297.1.trna15;
 NC_018297.1	tRNAscan-SE	exon	221201	221236	.	-	.	ID=NC_018297.1.trna15.exon2;Parent=NC_018297.1.trna15;
@@ -169,7 +166,6 @@ NC_018297.1	tRNAscan-SE	tRNA	1267788	1267869	75.0	+	.	ID=NC_018297.1.trna8;Name=
 NC_018297.1	tRNAscan-SE	exon	1267788	1267869	.	+	.	ID=NC_018297.1.trna8.exon1;Parent=NC_018297.1.trna8;
 NC_018297.1	tRNAscan-SE	tRNA	1510747	1510819	70.7	-	.	ID=NC_018297.1.trna9;Name=NC_018297.1.tRNA9-ArgCCT;isotype=Arg;anticodon=CCT;gene_biotype=tRNA;
 NC_018297.1	tRNAscan-SE	exon	1510747	1510819	.	-	.	ID=NC_018297.1.trna9.exon1;Parent=NC_018297.1.trna9;
-##gff-version 3
 NC_018298.1	tRNAscan-SE	tRNA	178368	178441	73.0	-	.	ID=NC_018298.1.trna9;Name=NC_018298.1.tRNA9-AsnGTT;isotype=Asn;anticodon=GTT;gene_biotype=tRNA;
 NC_018298.1	tRNAscan-SE	exon	178368	178441	.	-	.	ID=NC_018298.1.trna9.exon1;Parent=NC_018298.1.trna9;
 NC_018298.1	tRNAscan-SE	tRNA	290418	290489	57.7	-	.	ID=NC_018298.1.trna8;Name=NC_018298.1.tRNA8-AspGTC;isotype=Asp;anticodon=GTC;gene_biotype=tRNA;
@@ -190,7 +186,6 @@ NC_018298.1	tRNAscan-SE	tRNA	1012802	1012875	71.5	+	.	ID=NC_018298.1.trna2;Name=
 NC_018298.1	tRNAscan-SE	exon	1012802	1012875	.	+	.	ID=NC_018298.1.trna2.exon1;Parent=NC_018298.1.trna2;
 NC_018298.1	tRNAscan-SE	tRNA	1418278	1418359	65.3	+	.	ID=NC_018298.1.trna3;Name=NC_018298.1.tRNA3-LeuCAG;isotype=Leu;anticodon=CAG;gene_biotype=tRNA;
 NC_018298.1	tRNAscan-SE	exon	1418278	1418359	.	+	.	ID=NC_018298.1.trna3.exon1;Parent=NC_018298.1.trna3;
-##gff-version 3
 NC_018300.1	tRNAscan-SE	tRNA	196424	196495	57.7	+	.	ID=NC_018300.1.trna1;Name=NC_018300.1.tRNA1-AspGTC;isotype=Asp;anticodon=GTC;gene_biotype=tRNA;
 NC_018300.1	tRNAscan-SE	exon	196424	196495	.	+	.	ID=NC_018300.1.trna1.exon1;Parent=NC_018300.1.trna1;
 NC_018300.1	tRNAscan-SE	tRNA	214398	214470	66.8	-	.	ID=NC_018300.1.trna4;Name=NC_018300.1.tRNA4-AlaAGC;isotype=Ala;anticodon=AGC;gene_biotype=tRNA;
@@ -199,7 +194,6 @@ NC_018300.1	tRNAscan-SE	tRNA	400650	400722	77.7	-	.	ID=NC_018300.1.trna3;Name=NC
 NC_018300.1	tRNAscan-SE	exon	400650	400722	.	-	.	ID=NC_018300.1.trna3.exon1;Parent=NC_018300.1.trna3;
 NC_018300.1	tRNAscan-SE	tRNA	689163	689235	77.7	+	.	ID=NC_018300.1.trna2;Name=NC_018300.1.tRNA2-AlaTGC;isotype=Ala;anticodon=TGC;gene_biotype=tRNA;
 NC_018300.1	tRNAscan-SE	exon	689163	689235	.	+	.	ID=NC_018300.1.trna2.exon1;Parent=NC_018300.1.trna2;
-##gff-version 3
 NC_018301.1	tRNAscan-SE	tRNA	354325	354395	61.6	+	.	ID=NC_018301.1.trna1;Name=NC_018301.1.tRNA1-GlyGCC;isotype=Gly;anticodon=GCC;gene_biotype=tRNA;
 NC_018301.1	tRNAscan-SE	exon	354325	354395	.	+	.	ID=NC_018301.1.trna1.exon1;Parent=NC_018301.1.trna1;
 NC_018301.1	tRNAscan-SE	tRNA	466266	466339	71.5	+	.	ID=NC_018301.1.trna2;Name=NC_018301.1.tRNA2-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;

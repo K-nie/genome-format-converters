@@ -30,7 +30,6 @@ scaffold_1	tRNAscan-SE	tRNA	1278935	1279009	74.3	-	.	ID=scaffold_1.trna8;Name=sc
 scaffold_1	tRNAscan-SE	exon	1278935	1279009	.	-	.	ID=scaffold_1.trna8.exon1;Parent=scaffold_1.trna8;
 scaffold_1	tRNAscan-SE	tRNA	1363724	1363797	71.7	-	.	ID=scaffold_1.trna7;Name=scaffold_1.tRNA7-MetCAT;isotype=Met;anticodon=CAT;gene_biotype=tRNA;
 scaffold_1	tRNAscan-SE	exon	1363724	1363797	.	-	.	ID=scaffold_1.trna7.exon1;Parent=scaffold_1.trna7;
-##gff-version 3
 scaffold_2	tRNAscan-SE	tRNA	53718	53790	75.2	+	.	ID=scaffold_2.trna1;Name=scaffold_2.tRNA1-ArgTCT;isotype=Arg;anticodon=TCT;gene_biotype=tRNA;
 scaffold_2	tRNAscan-SE	exon	53718	53790	.	+	.	ID=scaffold_2.trna1.exon1;Parent=scaffold_2.trna1;
 scaffold_2	tRNAscan-SE	tRNA	88392	88473	66.6	-	.	ID=scaffold_2.trna8;Name=scaffold_2.tRNA8-SerTGA;isotype=Ser;anticodon=TGA;gene_biotype=tRNA;
@@ -48,7 +47,6 @@ scaffold_2	tRNAscan-SE	exon	1071742	1071778	.	+	.	ID=scaffold_2.trna4.exon1;Pare
 scaffold_2	tRNAscan-SE	exon	1071793	1071837	.	+	.	ID=scaffold_2.trna4.exon2;Parent=scaffold_2.trna4;
 scaffold_2	tRNAscan-SE	tRNA	1170951	1171024	64.6	-	.	ID=scaffold_2.trna5;Name=scaffold_2.tRNA5-ArgCCG;isotype=Arg;anticodon=CCG;gene_biotype=tRNA;
 scaffold_2	tRNAscan-SE	exon	1170951	1171024	.	-	.	ID=scaffold_2.trna5.exon1;Parent=scaffold_2.trna5;
-##gff-version 3
 scaffold_3	tRNAscan-SE	tRNA	317111	317204	71.8	+	.	ID=scaffold_3.trna1;Name=scaffold_3.tRNA1-LysTTT;isotype=Lys;anticodon=TTT;gene_biotype=tRNA;
 scaffold_3	tRNAscan-SE	exon	317111	317147	.	+	.	ID=scaffold_3.trna1.exon1;Parent=scaffold_3.trna1;
 scaffold_3	tRNAscan-SE	exon	317169	317204	.	+	.	ID=scaffold_3.trna1.exon2;Parent=scaffold_3.trna1;
@@ -67,7 +65,6 @@ scaffold_3	tRNAscan-SE	tRNA	811018	811099	70.0	-	.	ID=scaffold_3.trna4;Name=scaf
 scaffold_3	tRNAscan-SE	exon	811018	811099	.	-	.	ID=scaffold_3.trna4.exon1;Parent=scaffold_3.trna4;
 scaffold_3	tRNAscan-SE	tRNA	1112003	1112075	75.5	+	.	ID=scaffold_3.trna3;Name=scaffold_3.tRNA3-AlaTGC;isotype=Ala;anticodon=TGC;gene_biotype=tRNA;
 scaffold_3	tRNAscan-SE	exon	1112003	1112075	.	+	.	ID=scaffold_3.trna3.exon1;Parent=scaffold_3.trna3;
-##gff-version 3
 scaffold_4	tRNAscan-SE	tRNA	46138	46209	74.6	+	.	ID=scaffold_4.trna1;Name=scaffold_4.tRNA1-TrpCCA;isotype=Trp;anticodon=CCA;gene_biotype=tRNA;
 scaffold_4	tRNAscan-SE	exon	46138	46209	.	+	.	ID=scaffold_4.trna1.exon1;Parent=scaffold_4.trna1;
 scaffold_4	tRNAscan-SE	tRNA	122676	122749	65.4	+	.	ID=scaffold_4.trna2;Name=scaffold_4.tRNA2-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
@@ -109,7 +106,6 @@ scaffold_4	tRNAscan-SE	tRNA	1057114	1057186	74.2	+	.	ID=scaffold_4.trna9;Name=sc
 scaffold_4	tRNAscan-SE	exon	1057114	1057186	.	+	.	ID=scaffold_4.trna9.exon1;Parent=scaffold_4.trna9;
 scaffold_4	tRNAscan-SE	tRNA	1117671	1117744	71.7	+	.	ID=scaffold_4.trna10;Name=scaffold_4.tRNA10-MetCAT;isotype=Met;anticodon=CAT;gene_biotype=tRNA;
 scaffold_4	tRNAscan-SE	exon	1117671	1117744	.	+	.	ID=scaffold_4.trna10.exon1;Parent=scaffold_4.trna10;
-##gff-version 3
 scaffold_5	tRNAscan-SE	tRNA	18696	18777	61.4	-	.	ID=scaffold_5.trna7;Name=scaffold_5.tRNA7-LeuCAG;isotype=Leu;anticodon=CAG;gene_biotype=tRNA;
 scaffold_5	tRNAscan-SE	exon	18696	18777	.	-	.	ID=scaffold_5.trna7.exon1;Parent=scaffold_5.trna7;
 scaffold_5	tRNAscan-SE	tRNA	310296	310376	61.8	-	.	ID=scaffold_5.trna6;Name=scaffold_5.tRNA6-LeuTAG;isotype=Leu;anticodon=TAG;gene_biotype=tRNA;
@@ -125,7 +121,6 @@ scaffold_5	tRNAscan-SE	tRNA	956255	956336	73.1	-	.	ID=scaffold_5.trna2;Name=scaf
 scaffold_5	tRNAscan-SE	exon	956255	956336	.	-	.	ID=scaffold_5.trna2.exon1;Parent=scaffold_5.trna2;
 scaffold_5	tRNAscan-SE	tRNA	1116458	1116530	81.0	-	.	ID=scaffold_5.trna1;Name=scaffold_5.tRNA1-PheGAA;isotype=Phe;anticodon=GAA;gene_biotype=tRNA;
 scaffold_5	tRNAscan-SE	exon	1116458	1116530	.	-	.	ID=scaffold_5.trna1.exon1;Parent=scaffold_5.trna1;
-##gff-version 3
 scaffold_6	tRNAscan-SE	tRNA	87984	88056	73.5	-	.	ID=scaffold_6.trna5;Name=scaffold_6.tRNA5-AlaAGC;isotype=Ala;anticodon=AGC;gene_biotype=tRNA;
 scaffold_6	tRNAscan-SE	exon	87984	88056	.	-	.	ID=scaffold_6.trna5.exon1;Parent=scaffold_6.trna5;
 scaffold_6	tRNAscan-SE	tRNA	99266	99338	85.9	-	.	ID=scaffold_6.trna4;Name=scaffold_6.tRNA4-LysCTT;isotype=Lys;anticodon=CTT;gene_biotype=tRNA;
@@ -136,7 +131,6 @@ scaffold_6	tRNAscan-SE	tRNA	493026	493098	74.2	-	.	ID=scaffold_6.trna2;Name=scaf
 scaffold_6	tRNAscan-SE	exon	493026	493098	.	-	.	ID=scaffold_6.trna2.exon1;Parent=scaffold_6.trna2;
 scaffold_6	tRNAscan-SE	tRNA	639373	639444	70.0	+	.	ID=scaffold_6.trna1;Name=scaffold_6.tRNA1-ProTGG;isotype=Pro;anticodon=TGG;gene_biotype=tRNA;
 scaffold_6	tRNAscan-SE	exon	639373	639444	.	+	.	ID=scaffold_6.trna1.exon1;Parent=scaffold_6.trna1;
-##gff-version 3
 scaffold_7	tRNAscan-SE	tRNA	275650	275723	65.4	-	.	ID=scaffold_7.trna17;Name=scaffold_7.tRNA17-IleAAT;isotype=Ile;anticodon=AAT;gene_biotype=tRNA;
 scaffold_7	tRNAscan-SE	exon	275650	275723	.	-	.	ID=scaffold_7.trna17.exon1;Parent=scaffold_7.trna17;
 scaffold_7	tRNAscan-SE	tRNA	302193	302276	69.7	-	.	ID=scaffold_7.trna16;Name=scaffold_7.tRNA16-TyrGTA;isotype=Tyr;anticodon=GTA;gene_biotype=tRNA;
