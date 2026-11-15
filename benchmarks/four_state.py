@@ -484,6 +484,17 @@ def compare_t2(cand: Path, ref: Path, **_) -> Verdict:
 # ------------------------------------------------- T3 FASTA+GFF -> GenBank
 
 
+# INSDC Feature Table keys (release 11.x).
+_INSDC_KEYS = frozenset("""
+assembly_gap C_region CDS centromere D-loop D_segment exon gap gene iDNA intron
+J_segment mat_peptide misc_binding misc_difference misc_feature misc_recomb
+misc_RNA misc_structure mobile_element modified_base mRNA ncRNA N_region
+old_sequence operon oriT polyA_site precursor_RNA prim_transcript primer_bind
+propeptide protein_bind regulatory repeat_region rep_origin rRNA S_region
+sig_peptide source stem_loop STS telomere tmRNA transit_peptide tRNA unsure
+V_region V_segment variation 3'UTR 5'UTR""".split())
+
+
 def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
     try:
         from Bio import SeqIO
@@ -530,12 +541,24 @@ def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
     # keys such as "transposable_ele". Those features are matched to the
     # candidate by location alone (any key), then left out of the
     # type-by-type comparison below.
+    #
+    # The reference also keeps Sequence Ontology names that are not INSDC
+    # feature keys (ncRNA_gene, pseudogene, chromosome, snoRNA). A writer that
+    # follows the INSDC table (EMBOSS) files those as misc_feature; such a
+    # feature is matched by location to the candidate's misc_feature.
     truncated = 0
+    insdc = 0
     for rid in r:
         if rid not in c:
             continue
         rf, cf_all = r[rid][1], c[rid][1]
         for (t, loc), n in list(rf.items()):
+            if len(t) != 16 and t not in _INSDC_KEYS and cf_all.get((t, loc), 0) == 0:
+                if cf_all.get(("misc_feature", loc), 0) >= n:
+                    cf_all[("misc_feature", loc)] -= n
+                    insdc += n
+                    del rf[(t, loc)]
+                continue
             if len(t) != 16:
                 continue
             for _ in range(n):
@@ -560,6 +583,10 @@ def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
             return Verdict(DISAGREEMENT, f"feature set differs in {rid}")
     conv = ["rendering"]
     reason = "rendering (line wrap, qualifier order)"
+    if insdc:
+        conv.append("insdc-feature-keys")
+        reason += (f"; {insdc} reference features with non-INSDC keys written "
+                   "as misc_feature")
     if truncated:
         conv.append("reference-truncates-keys")
         reason += (f"; {truncated} reference features with keys cut to 16 "
@@ -697,6 +724,9 @@ def compare_t4(cand: Path, ref: Path, input_dir=None, **_) -> Verdict:
             conv.update({"id-prefix", "reference-drops-transposons"})
             c, r = c3, r2
         else:
+            if c2 is not None and r2 is not None:   # report what differs beyond the prefix
+                return Verdict(DISAGREEMENT, _set_diff_reason(
+                    "transcript sets (ignoring ID prefixes)", set(c2), set(r2)))
             return Verdict(DISAGREEMENT, _set_diff_reason("transcript sets", set(c), set(r)))
     for tid in c:
         a, b = c[tid], r[tid]
@@ -787,6 +817,9 @@ def compare_t5(cand: Path, ref: Path, input_dir=None, **_) -> Verdict:
                     return out
                 c_by, r_by = by_key(c), by_key(r)
             else:
+                if c2 is not None and r2 is not None:
+                    return Verdict(DISAGREEMENT, _set_diff_reason(
+                        "feature names (ignoring ID prefixes)", set(c2), set(r2)))
                 return Verdict(DISAGREEMENT,
                                _set_diff_reason("feature names", set(c_by), set(r_by)))
     for name, row in c_by.items():

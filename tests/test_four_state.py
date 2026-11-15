@@ -280,3 +280,27 @@ def test_t5_reference_that_drops_te_transcripts(tmp_path):
     assert v.state == fs.STRUCTURAL and "reference-drops-transposons" in v.conventions
     assert "row-order" not in v.conventions
     assert fs.compare_t5(tmp_path / "c", tmp_path / "r").state == fs.DISAGREEMENT
+
+
+def test_t3_insdc_writer_files_so_types_as_misc_feature(tmp_path):
+    import warnings
+    from Bio import SeqIO
+    from Bio.Seq import Seq
+    from Bio.SeqFeature import FeatureLocation, SeqFeature
+    from Bio.SeqRecord import SeqRecord
+
+    def write(d, feats):
+        rec = SeqRecord(Seq("A" * 500), id="I", annotations={"molecule_type": "DNA"})
+        rec.features = [SeqFeature(FeatureLocation(s, e, st), type=t) for t, s, e, st in feats]
+        (tmp_path / d).mkdir()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            SeqIO.write(rec, str(tmp_path / d / "x.gb"), "genbank")
+
+    write("r", [("gene", 10, 50, 1), ("ncRNA_gene", 60, 90, 1), ("pseudogene", 100, 200, -1)])
+    write("c", [("gene", 10, 50, 1), ("misc_feature", 60, 90, 1), ("misc_feature", 100, 200, -1)])
+    v = fs.compare_t3(tmp_path / "c", tmp_path / "r")
+    assert v.state == fs.STRUCTURAL and "insdc-feature-keys" in v.conventions
+    # A misc_feature in the wrong place is still a defect.
+    write("c2", [("gene", 10, 50, 1), ("misc_feature", 61, 90, 1), ("misc_feature", 100, 200, -1)])
+    assert fs.compare_t3(tmp_path / "c2", tmp_path / "r").state == fs.DISAGREEMENT

@@ -359,7 +359,11 @@ def fig_correctness(verd: pd.DataFrame, out: Path) -> None:
                                        edgecolor=INK_2 if state == "reference" else "none",
                                        linewidth=0.6, linestyle=(0, (2, 2))))
             conv = str(v.iloc[0].get("conventions", "") or "")
-            txt = STATE_LABEL.get(state, state) + (f"\n{conv}" if conv else "")
+            # Conventions are listed in tables/verdicts.tsv; a cell gives the
+            # count only, so it stays legible when several apply.
+            n_conv = len([c for c in conv.split(",") if c.strip()])
+            txt = STATE_LABEL.get(state, state) + (
+                f"\n{n_conv} convention{'s' * (n_conv > 1)}" if n_conv else "")
             ax.text(j + 0.5, i + 0.5, txt, ha="center", va="center", fontsize=6,
                     color="white" if state in ("structural", "disagreement", "byte") else INK)
     ax.set_xlim(0, len(tools))
@@ -385,7 +389,7 @@ def fig_correctness(verd: pd.DataFrame, out: Path) -> None:
 _CONV = re.compile(r"\b(chrom-label|allele-order|attribute-format|gene-rows|exon-fusion|"
                    r"itemRgb|row-order|score|number-format|record-order|"
                    r"stochastic-draw|rendering|reference-drops-colocated|indels-excluded|"
-                   r"site-order|monomorphic-allele-code|id-prefix|thick-span-noncoding|name-attribute|reference-omits-children|genetic-position-default|reference-drops-transposons|reference-truncates-keys)\b")
+                   r"site-order|monomorphic-allele-code|id-prefix|thick-span-noncoding|name-attribute|reference-omits-children|genetic-position-default|reference-drops-transposons|reference-truncates-keys|insdc-feature-keys)\b")
 
 
 def load_verdicts(phase_dirs: dict) -> pd.DataFrame:
