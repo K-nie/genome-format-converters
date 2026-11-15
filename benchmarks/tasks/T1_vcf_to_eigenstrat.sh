@@ -140,8 +140,11 @@ fi
 # plink2 writes EIGENSOFT's packed .geno (binary, "GENO" header) rather than
 # text; EIGENSOFT reads both, and the comparator decodes it. Restricted to
 # biallelic SNPs, as gfc vcf-to-eigenstrat is. Same --memory cap as above.
-if command -v plink2 >/dev/null 2>&1; then
-    p2_version="$(plink2 --version 2>/dev/null | awk '{print $2; exit}')"
+# GFC_BENCH_PLINK2_EIG names the plink2 binary for this step (default: the
+# plink2 on PATH); --export eig needs a recent alpha build.
+p2_bin="${GFC_BENCH_PLINK2_EIG:-plink2}"
+if command -v "$p2_bin" >/dev/null 2>&1; then
+    p2_version="$("$p2_bin" --version 2>/dev/null | awk '{print $2; exit}')"
     : "${p2_version:=unknown}"
     vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
     stem="$(basename "$vcf_input")"
@@ -152,7 +155,7 @@ if command -v plink2 >/dev/null 2>&1; then
         python "$repo/benchmarks/bench_one.py" \
             --task "T1" --tool "plink2" --version "$p2_version" \
             --replicate "$rep" \
-            --cmd "plink2 --vcf '$vcf_input' --threads 1 --memory $GFC_BENCH_PLINK_MEM_MB --allow-extra-chr \
+            --cmd "'$p2_bin' --vcf '$vcf_input' --threads 1 --memory $GFC_BENCH_PLINK_MEM_MB --allow-extra-chr \
                           --snps-only just-acgt --max-alleles 2 \
                           --export eig --out '$out_dir/$stem' --silent && \
                    rm -f '$out_dir/$stem'-temporary.*" \

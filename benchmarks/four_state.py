@@ -613,7 +613,13 @@ def compare_t3(cand: Path, ref: Path, **_) -> Verdict:
             return Verdict(DISAGREEMENT, f"sequence differs in {rid}")
         cf = Counter({k: v for k, v in c[rid][1].items() if k[0] in r_types})
         if cf != r[rid][1]:
-            return Verdict(DISAGREEMENT, f"feature set differs in {rid}")
+            only_c = sorted((cf - r[rid][1]).elements())
+            only_r = sorted((r[rid][1] - cf).elements())
+            fmt = lambda xs: [f"{t} {loc}" for t, loc in xs[:3]]  # noqa: E731
+            return Verdict(DISAGREEMENT,
+                           f"feature set differs in {rid}: {len(only_c)} only in candidate "
+                           f"(e.g. {fmt(only_c)}), {len(only_r)} only in reference "
+                           f"(e.g. {fmt(only_r)})")
     conv = ["rendering"]
     reason = "rendering (line wrap, qualifier order)"
     if insdc:
