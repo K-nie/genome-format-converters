@@ -13,7 +13,7 @@ Output (``--out``, default ``<results>/paper``)::
     figures/fig_runtime_memory.{pdf,png}   per-task wall time and peak RSS
     figures/fig_scaling.{pdf,png}          wall time vs input size
     figures/fig_correctness.{pdf,png}      four-state verdict matrix
-    figures/fig_annotations.{pdf,png}      T4/T5 on real gene annotations
+    figures/supp_fig_annotations_<set>.{pdf,png}  T4/T5 on real gene annotations (supplement)
     tables/ratios_<phase>.tsv              competitor/gfc median ratios, 95% CI
     tables/per_cell_<phase>.tsv            median, CI, CV, n per (task, tool)
     tables/verdicts.tsv                    every four-state verdict + reason
@@ -389,7 +389,7 @@ def fig_correctness(verd: pd.DataFrame, out: Path) -> None:
 _CONV = re.compile(r"\b(chrom-label|allele-order|attribute-format|gene-rows|exon-fusion|"
                    r"itemRgb|row-order|score|number-format|record-order|"
                    r"stochastic-draw|rendering|reference-drops-colocated|indels-excluded|"
-                   r"site-order|monomorphic-allele-code|id-prefix|thick-span-noncoding|name-attribute|reference-omits-children|genetic-position-default|reference-drops-transposons|reference-truncates-keys|insdc-feature-keys)\b")
+                   r"site-order|monomorphic-allele-code|id-prefix|thick-span-noncoding|name-attribute|reference-omits-children|genetic-position-default|reference-drops-transposons|reference-truncates-keys|insdc-feature-keys|packed-geno|snp-id)\b")
 
 
 def load_verdicts(phase_dirs: dict) -> pd.DataFrame:
@@ -467,7 +467,7 @@ def main() -> int:
                   "Real gene annotations: competitor/gfc ratios")
             for ds in sorted(ann["dataset"].dropna().unique()):
                 sub = ann[ann["dataset"] == ds]
-                fig_runtime_memory(sub, per_cell(sub), figs, f"fig_annotations_{ds}")
+                fig_runtime_memory(sub, per_cell(sub), figs, f"supp_fig_annotations_{ds}")
 
     verd_phases = extract(args.verdicts) if args.verdicts else phases
     if args.verdicts:

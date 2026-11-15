@@ -79,6 +79,7 @@ _TOOL_TO_DIR = {
     ("T1", "gfc"):              "gfc",
     ("T1", "convertf"):         "convertf",
     ("T1", "convertf-only"):    "convertfonly",
+    ("T1", "plink2"):           "plink2",
     ("T2", "gfc"):              "gfc",
     ("T2", "plink2"):           "plink2",
     ("T2", "plink1.9"):         "plink1",

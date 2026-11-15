@@ -226,13 +226,44 @@ def _read_eigenstrat(d: Path):
     return snps, genos, inds, geno + snp + ind
 
 
+# Packed EIGENSTRAT (.geno starting "GENO <nind> <nsnp> <hash> <hash>", as
+# written by plink2 --export eig): one record of max(48, ceil(nind / 4))
+# bytes per SNP after a header record, 2 bits per individual from the high
+# bits down, 3 = missing.
+_PACK_LUT = [bytes(b"0129"[(v >> s) & 3] for s in (6, 4, 2, 0)) for v in range(256)]
+
+
+def _is_packed_geno(path: Path) -> bool:
+    with open(path, "rb") as fh:
+        return fh.read(5) == b"GENO "
+
+
+class _PackedGeno:
+    """File-like reader that turns a packed .geno into text rows."""
+
+    def __init__(self, fh):
+        self.fh = fh
+        head = fh.read(48)
+        fields = head.split()
+        self.nind = int(fields[1])
+        self.rlen = max(48, -(-self.nind // 4))
+        fh.read(self.rlen - 48)
+
+    def readline(self) -> bytes:
+        rec = self.fh.read(self.rlen)
+        if not rec:
+            return b""
+        return b"".join(_PACK_LUT[b] for b in rec[: -(-self.nind // 4)])[: self.nind]
+
+
 def _eig_items(snp_files: Sequence[Path], geno_files: Sequence[Path]):
     """Yield (index, .snp fields, .geno row bytes), one site at a time."""
     idx = 0
     if len(snp_files) != len(geno_files):
         raise _Mismatch(".snp and .geno file counts differ")
     for sf, gf in zip(snp_files, geno_files):
-        with open(sf) as fs_, open(gf, "rb") as fg:
+        with open(sf) as fs_, open(gf, "rb") as fraw:
+            fg = _PackedGeno(fraw) if _is_packed_geno(gf) else fraw
             for line in fs_:
                 if not line.strip() or line.startswith("#"):
                     continue
@@ -271,6 +302,8 @@ def compare_t1(cand: Path, ref: Path, **_) -> Verdict:
         return Verdict(DISAGREEMENT, "sample order differs")
     nc, nr = _count_data_lines(c_snp), _count_data_lines(r_snp)
     conv = set()
+    if any(_is_packed_geno(f) for f in c_geno + r_geno):
+        conv.add("packed-geno")
     key, loose = _site_key(1, 3, 4, 5)
     idx_pairs = []
     # Sites present on one side only are collected (not a stop at the first)

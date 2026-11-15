@@ -136,6 +136,33 @@ else
     echo "[skip] T1 convertf (EIGENSOFT convertf not on PATH; install eigensoft from bioconda)" >&2
 fi
 
+# ---------- tool 3: plink2 --export eig (direct VCF -> EIGENSTRAT) -----------
+# plink2 writes EIGENSOFT's packed .geno (binary, "GENO" header) rather than
+# text; EIGENSOFT reads both, and the comparator decodes it. Restricted to
+# biallelic SNPs, as gfc vcf-to-eigenstrat is. Same --memory cap as above.
+if command -v plink2 >/dev/null 2>&1; then
+    p2_version="$(plink2 --version 2>/dev/null | awk '{print $2; exit}')"
+    : "${p2_version:=unknown}"
+    vcf_input="$(ls "$GFC_BENCH_INPUT_DIR"/$GFC_BENCH_VCF_PATTERN 2>/dev/null | head -1)"
+    stem="$(basename "$vcf_input")"
+    stem="${stem%.vcf.gz}"; stem="${stem%.vcf}"; stem="${stem%.bcf}"
+    for rep in $(seq 1 "$GFC_BENCH_REPLICATES"); do
+        out_dir="$bench_dir/plink2_rep${rep}"
+        mkdir -p "$out_dir"
+        python "$repo/benchmarks/bench_one.py" \
+            --task "T1" --tool "plink2" --version "$p2_version" \
+            --replicate "$rep" \
+            --cmd "plink2 --vcf '$vcf_input' --threads 1 --memory $GFC_BENCH_PLINK_MEM_MB --allow-extra-chr \
+                          --snps-only just-acgt --max-alleles 2 \
+                          --export eig --out '$out_dir/$stem' --silent && \
+                   rm -f '$out_dir/$stem'-temporary.*" \
+            --notes "plink2 --export eig (packed .geno, --memory ${GFC_BENCH_PLINK_MEM_MB} MB)" \
+            >> "$out"
+    done
+else
+    echo "[skip] T1 plink2 (plink2 not on PATH)" >&2
+fi
+
 # Removed in Stage 1 (bench/stage1-fairness): the bcftools+awk hand-script
 # baseline previously here. Its awk encoded ref-allele dosage instead of
 # variant-allele dosage, so the .geno output was inverted relative to the

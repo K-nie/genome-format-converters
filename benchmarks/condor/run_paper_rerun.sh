@@ -16,7 +16,7 @@
 # benchmarks/results/<phase>.<timestamp>.tar.gz.
 set -euo pipefail
 
-phase="${1:?usage: run_paper_rerun.sh <main|annotations|scaling|cold|import|footprint>}"
+phase="${1:?usage: run_paper_rerun.sh <main|annotations|scaling|cold|import|footprint|t1|verdicts>}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 bench="$repo_root/benchmarks"
@@ -103,6 +103,30 @@ case "$phase" in
         (unset GFC_BENCH_INPUT_DIR GFC_BENCH_VCF_PATTERN; bash "$bench/run_bench.sh" T3 T4 T5 T6 T7)
         python "$bench/analyze/collect_results.py"
         save_raw
+        ;;
+    t1)
+        # T1 alone (gfc, convertf, convertf-only, plink2) on one node, so the
+        # plink2 --export eig competitor is timed beside the other two.
+        use_chr22
+        export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-10}"
+        bash "$bench/run_bench.sh" T1
+        save_raw
+        ;;
+    verdicts)
+        # Correctness only (one replicate; timings not used): T3 on R64 and
+        # T4/T5 on every annotation set.
+        export GFC_BENCH_REPLICATES=1
+        (unset GFC_BENCH_INPUT_DIR GFC_BENCH_VCF_PATTERN; bash "$bench/run_bench.sh" T3)
+        save_raw
+        for d in "$bench"/data/annotations/*/; do
+            label="$(basename "$d")"
+            for task in T4_gff3_to_gtf T5_gff3_to_bed12; do
+                GFC_BENCH_INPUT_DIR="$d" bash "$bench/tasks/${task}.sh" || \
+                    echo "[warn] $task on $label exited non-zero" >&2
+                [[ -f "$raw/${task}.verdicts.tsv" ]] && \
+                    cp "$raw/${task}.verdicts.tsv" "$dest/${task}__${label}.verdicts.tsv"
+            done
+        done
         ;;
     annotations)
         export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-10}"

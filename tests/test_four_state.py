@@ -304,3 +304,34 @@ def test_t3_insdc_writer_files_so_types_as_misc_feature(tmp_path):
     # A misc_feature in the wrong place is still a defect.
     write("c2", [("gene", 10, 50, 1), ("misc_feature", 61, 90, 1), ("misc_feature", 100, 200, -1)])
     assert fs.compare_t3(tmp_path / "c2", tmp_path / "r").state == fs.DISAGREEMENT
+
+
+def _write_packed_geno(path, rows):
+    """Packed EIGENSTRAT as plink2 --export eig writes it."""
+    nind = len(rows[0])
+    rlen = max(48, -(-nind // 4))
+    head = f"GENO {nind} {len(rows)} 0 0".encode().ljust(rlen, b"\0")
+    code = {"0": 0, "1": 1, "2": 2, "9": 3}
+    body = b""
+    for r in rows:
+        vals = [code[x] for x in r] + [0] * (-len(r) % 4)
+        rec = bytes((vals[k] << 6) | (vals[k + 1] << 4) | (vals[k + 2] << 2) | vals[k + 3]
+                    for k in range(0, len(vals), 4))
+        body += rec.ljust(rlen, b"\0")
+    path.write_bytes(head + body)
+
+
+def test_t1_packed_geno_from_plink2(tmp_path):
+    rows = ["2109012", "0129221", "9999990"]
+    snp = "".join(f"rs{i}\t22\t0.0\t{1000 + i}\tC\tG\n" for i in range(3))
+    ind = "".join(f"S{i}\tU\tPOP\n" for i in range(7))
+    for d in ("c", "r"):
+        (tmp_path / d).mkdir()
+        (tmp_path / d / "x.snp").write_text(snp)
+        (tmp_path / d / "x.ind").write_text(ind)
+    (tmp_path / "r" / "x.geno").write_text("".join(r + "\n" for r in rows))
+    _write_packed_geno(tmp_path / "c" / "x.geno", rows)
+    v = fs.compare_t1(tmp_path / "c", tmp_path / "r")
+    assert v.state == fs.STRUCTURAL and "packed-geno" in v.conventions
+    _write_packed_geno(tmp_path / "c" / "x.geno", ["2109012", "0129222", "9999990"])
+    assert fs.compare_t1(tmp_path / "c", tmp_path / "r").state == fs.DISAGREEMENT
