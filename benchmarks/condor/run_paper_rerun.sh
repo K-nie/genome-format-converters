@@ -9,6 +9,7 @@
 #   cold         the main panel again with input files evicted from the page
 #                cache before every replicate (Supplementary Table S2), n=5
 #   import       CLI start-up time and RSS per subcommand (bench_import.py)
+#   mutreal      mutation test on the real inputs (mutation_test_real.py)
 #   footprint    install footprint of gfc, the multi-tool stack, BioConvert
 #                and biopython.convert in fresh conda environments
 #
@@ -16,7 +17,7 @@
 # benchmarks/results/<phase>.<timestamp>.tar.gz.
 set -euo pipefail
 
-phase="${1:?usage: run_paper_rerun.sh <main|annotations|scaling|cold|import|footprint|t1|verdicts>}"
+phase="${1:?usage: run_paper_rerun.sh <main|annotations|scaling|cold|import|footprint|t1|verdicts|mutreal>}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 bench="$repo_root/benchmarks"
@@ -127,6 +128,20 @@ case "$phase" in
                     cp "$raw/${task}.verdicts.tsv" "$dest/${task}__${label}.verdicts.tsv"
             done
         done
+        ;;
+    mutreal)
+        # Mutation test on the real benchmark inputs: defects planted at
+        # random sites, samples and features of gfc's real outputs.
+        python "$bench/mutation_test_real.py" \
+            --vcf "$vcf_dir/$vcf_name" --sites "${GFC_MUTREAL_SITES:-20000}" \
+            --annotation-dir "$bench/data/annotations/hs_chr22" \
+            --annotation-dir "$bench/data/annotations/sc_r64" \
+            --annotation-dir "$bench/data/y1000plus" \
+            --genome-dir "$bench/data/annotations/sc_r64" \
+            --reps "${GFC_MUTREAL_REPS:-5}" --seed 1 \
+            --out "$dest/mutation_real.tsv" 2> "$dest/mutation_real.log" || \
+            echo "[warn] mutation_test_real reported unexpected cases (see mutation_real.log)" >&2
+        tail -n 20 "$dest/mutation_real.log" >&2
         ;;
     annotations)
         export GFC_BENCH_REPLICATES="${GFC_BENCH_REPLICATES:-10}"
