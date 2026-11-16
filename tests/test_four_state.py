@@ -335,3 +335,20 @@ def test_t1_packed_geno_from_plink2(tmp_path):
     assert v.state == fs.STRUCTURAL and "packed-geno" in v.conventions
     _write_packed_geno(tmp_path / "c" / "x.geno", ["2109012", "0129222", "9999990"])
     assert fs.compare_t1(tmp_path / "c", tmp_path / "r").state == fs.DISAGREEMENT
+
+
+def test_real_mode_on_test_data(tmp_path):
+    """mutation_test_real.py catches every planted defect on the repo's own
+    annotation files and on a VCF with co-located records."""
+    import argparse
+    import mutation_test_real as mr
+    vdir = tmp_path / "v"
+    vdir.mkdir()
+    mutation_test.make_vcf(vdir / "toy.vcf", n_sites=200, n_samples=30, seed=4)
+    args = argparse.Namespace(vcf=str(vdir / "toy.vcf"), sites=200,
+                              annotation_dir=[str(Path(__file__).parent / "test_data")],
+                              genome_dir=None, reps=2, seed=7)
+    cases = mr.run(args, tmp_path / "work")
+    run = [c for c in cases if c.got != mr.NA]
+    assert run and all(c.ok for c in run), [c for c in run if not c.ok]
+    assert sum(c.kind == "mutation" for c in run) >= 20
