@@ -16,6 +16,9 @@
 #   cold         main panel, page cache evicted per replicate, n=5  ~6-8 h
 #   import       start-up time per subcommand, 10 trials   < 10 min
 #   footprint    four fresh conda envs (needs network on the execute host) ~30 min
+#   extended     E01-E24 (the other 24 subcommands): input prep, then n=10
+#                (needs network for the first run's downloads)   ~4-8 h
+#                condor_submit paper_rerun.sub -append 'queue phase in (extended)'
 #
 # Each job writes to its own results directory and scratch space, so the
 # jobs can run at the same time without overwriting each other.

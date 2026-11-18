@@ -1,0 +1,11 @@
+# BioConvert in its own env (its dependency set clashes with gfc-bench).
+# run_paper_rerun.sh points GFC_BENCH_BIOCONVERT at this env's bioconvert.
+#
+#   mamba env create -f benchmarks/extended/environment_bioconvert.yml
+name: gfc-bioconvert
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.10
+  - bioconvert

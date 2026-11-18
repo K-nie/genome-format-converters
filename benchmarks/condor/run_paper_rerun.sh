@@ -12,12 +12,15 @@
 #   mutreal      mutation test on the real inputs (mutation_test_real.py)
 #   footprint    install footprint of gfc, the multi-tool stack, BioConvert
 #                and biopython.convert in fresh conda environments
+#   extended     the 24 subcommands outside T1-T8 (E01-E24): builds the
+#                inputs (benchmarks/extended/prepare_inputs.sh), then wall
+#                time, peak RSS and verdicts against other tools, n=10
 #
 # Results land in benchmarks/results/<phase>/ and are tarred to
 # benchmarks/results/<phase>.<timestamp>.tar.gz.
 set -euo pipefail
 
-phase="${1:?usage: run_paper_rerun.sh <main|annotations|scaling|cold|import|footprint|t1|verdicts|mutreal>}"
+phase="${1:?usage: run_paper_rerun.sh <main|annotations|scaling|cold|import|footprint|t1|verdicts|mutreal|extended>}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 bench="$repo_root/benchmarks"
@@ -182,6 +185,28 @@ case "$phase" in
         export MAMBA="${MAMBA:-$(command -v mamba >/dev/null && echo mamba || echo conda)}"
         GFC_FOOTPRINT_ROOT="$GFC_BENCH_TMP/footprint" bash "$bench/install_footprint.sh"
         cp "$raw/install_footprint.tsv" "$dest/"
+        ;;
+    extended)
+        # Extra tools live in the gfc-ext env and BioConvert in
+        # gfc-bioconvert (bootstrap.sh builds both). gfc-ext goes after
+        # gfc-bench on PATH so shared tools keep the gfc-bench versions.
+        envs="$(conda info --base)/envs"
+        [[ -d "$envs/gfc-ext/bin" ]] && export PATH="$PATH:$envs/gfc-ext/bin" || \
+            echo "[warn] gfc-ext env missing: run bootstrap.sh" >&2
+        if [[ -x "$envs/gfc-bioconvert/bin/bioconvert" ]]; then
+            export GFC_BENCH_BIOCONVERT="$envs/gfc-bioconvert/bin/bioconvert"
+        else
+            echo "[warn] gfc-bioconvert env missing: BioConvert rows will be skipped" >&2
+        fi
+        for t in art_illumina minimap2 nucmer show-coords lastal FastTree esl-reformat \
+                 diamond plink2 bcftools seqkit seqret gffread agat_convert_sp_gxf2gxf.pl bedtools; do
+            command -v "$t" >/dev/null && echo "[info] $t: $(command -v "$t")" >&2 || \
+                echo "[warn] $t not on PATH" >&2
+        done
+        GFC_BENCH_PREP_THREADS="${GFC_BENCH_PREP_THREADS:-4}" \
+            bash "$bench/extended/prepare_inputs.sh"
+        python "$bench/extended/run_extended.py" --reps "${GFC_BENCH_REPLICATES:-10}" \
+            --out "$dest" --tmp "$GFC_BENCH_TMP/extended"
         ;;
     *)
         echo "[err ] unknown phase $phase" >&2; exit 2 ;;

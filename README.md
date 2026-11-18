@@ -147,7 +147,7 @@ gfc <subcommand> --help     # detailed options for one subcommand
 | `fasta-qual-to-fastq`  | Combine FASTA + QUAL into FASTQ                        | `gfc fasta-qual-to-fastq --input-dir ./data --output-dir ./fq` |
 | `fastq-to-fasta-qual`  | Split FASTQ into FASTA + QUAL                          | `gfc fastq-to-fasta-qual --input-dir ./fq --output-dir ./split` |
 | `fasta-to-table`       | FASTA → two-column TSV (id, sequence)                  | `gfc fasta-to-table --input-dir ./fa --output-dir ./tsv` |
-| `convert-alignment`    | Convert between FASTA / PHYLIP / NEXUS / CLUSTAL       | `gfc convert-alignment --input-dir ./aln --output-dir ./phy --in-format fasta --out-format phylip` |
+| `convert-alignment`    | Convert between FASTA / PHYLIP (strict or relaxed) / NEXUS / CLUSTAL| `gfc convert-alignment --input-dir ./aln --output-dir ./phy --in-format fasta --out-format phylip` |
 | `stockholm-to-fasta`   | Stockholm (Rfam / Pfam) → FASTA alignment              | `gfc stockholm-to-fasta --input-dir ./sto --output-dir ./fa` |
 | `fasta-to-stockholm`   | FASTA alignment → Stockholm                            | `gfc fasta-to-stockholm --input-dir ./fa --output-dir ./sto` |
 

@@ -34,6 +34,21 @@ else
     "$solver" env create -n gfc-bench -f benchmarks/environment.yml
 fi
 
+# ---- extra envs for the extended phase (E01-E24) ------------------------
+# Separate envs so the pinned gfc-bench solve stays as it is. A failure
+# here only affects the extended phase, so warn and carry on.
+for spec in gfc-ext:benchmarks/extended/environment_extended.yml \
+            gfc-bioconvert:benchmarks/extended/environment_bioconvert.yml; do
+    env_name="${spec%%:*}"; env_file="${spec#*:}"
+    if conda env list 2>/dev/null | awk '{print $1}' | grep -qx "$env_name"; then
+        "$solver" env update -n "$env_name" -f "$env_file" || \
+            echo "[warn] could not update $env_name" >&2
+    else
+        "$solver" env create -n "$env_name" -f "$env_file" || \
+            echo "[warn] could not create $env_name (extended phase will skip its tools)" >&2
+    fi
+done
+
 # ---- install gfc into the env -----------------------------------------
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"

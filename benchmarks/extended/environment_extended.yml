@@ -1,0 +1,18 @@
+# Extra tools for the extended benchmark (E01-E24) that the gfc-bench env
+# lacks. Kept in its own env so the pinned gfc-bench solve is untouched;
+# run_paper_rerun.sh appends this env's bin/ to PATH (after gfc-bench, so
+# gfc-bench's own versions of shared tools win).
+#
+#   mamba env create -f benchmarks/extended/environment_extended.yml
+name: gfc-ext
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - art                # ART Illumina read simulator (E02 reads)
+  - minimap2           # E06 BAM
+  - mummer4            # nucmer (E18 input), show-coords (E18 competitor)
+  - last               # lastdb / lastal / last-split (E19 MAF)
+  - fasttree           # E15 trees
+  - hmmer              # easel miniapps (esl-reformat), E12-E14
+  - curl

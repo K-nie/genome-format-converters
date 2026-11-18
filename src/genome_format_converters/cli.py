@@ -352,10 +352,10 @@ def main():
     p = subparsers.add_parser("convert-alignment", help="Convert alignment between formats")
     _add_io_args(p, single_file=False); _add_batch_flags(p)
     p.add_argument("--in-format", required=True,
-                   choices=["fasta", "phylip", "nexus", "clustal"],
+                   choices=["fasta", "phylip", "phylip-relaxed", "nexus", "clustal"],
                    help="Input alignment format")
     p.add_argument("--out-format", required=True,
-                   choices=["fasta", "phylip", "nexus", "clustal"],
+                   choices=["fasta", "phylip", "phylip-relaxed", "nexus", "clustal"],
                    help="Output alignment format")
 
     p = subparsers.add_parser("fasta-to-table",

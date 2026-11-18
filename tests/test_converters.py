@@ -103,6 +103,33 @@ def test_genbank_to_gff3(tmp_path):
     assert (out_dir / "tiny.gff3").exists()
 
 
+def test_genbank_to_gff3_joined_cds(tmp_path):
+    from Bio import SeqIO
+    from Bio.Seq import Seq
+    from Bio.SeqFeature import CompoundLocation, FeatureLocation, SeqFeature
+    from Bio.SeqRecord import SeqRecord
+    rec = SeqRecord(Seq("ATGAAACCCGGGTTTAAATAG" + "C" * 9), id="chrT", name="chrT",
+                    annotations={"molecule_type": "DNA"})
+    # join(1..7,11..21): a 7-base exon, an intron, then 11 bases.
+    loc = CompoundLocation([FeatureLocation(0, 7, 1), FeatureLocation(10, 21, 1)])
+    rec.features.append(SeqFeature(loc, type="CDS",
+                                   qualifiers={"locus_tag": ["T1"], "pseudo": [""]}))
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    SeqIO.write(rec, str(in_dir / "t.gbk"), "genbank")
+    out_dir = tmp_path / "out"
+    genbank_to_gff3.batch_convert(str(in_dir), str(out_dir))
+    rows = [l.split("\t") for l in (out_dir / "t.gff3").read_text().splitlines()
+            if not l.startswith("#")]
+    assert rows[0][2:5] == ["region", "1", "30"]
+    cds = [r for r in rows if r[2] == "CDS"]
+    # One line per part, sharing an ID; the second part starts 2 bases
+    # into a codon (7 % 3 == 1), so its phase is 2.
+    assert [(r[3], r[4], r[7]) for r in cds] == [("1", "7", "0"), ("11", "21", "2")]
+    assert all(r[8].startswith("ID=CDS:T1;") for r in cds)
+    assert "pseudo=true" in cds[0][8]
+
+
 def test_fasta_gff_to_gbk(tmp_path):
     in_dir = _stage(tmp_path, "tiny.fasta", "tiny.gff3")
     out_dir = tmp_path / "out"
@@ -171,6 +198,38 @@ def test_convert_alignment(tmp_path):
     assert (out_dir / "aln.phylip").exists()
 
 
+def _pfam_style_fasta(path: Path, names) -> None:
+    rows = ["AC.GT-AC", "ACAGT-A.", "AC.GTTAC"]
+    path.write_text("".join(f">{n}\n{r}\n" for n, r in zip(names, rows)))
+
+
+def test_convert_alignment_phylip_dots_and_relaxed(tmp_path):
+    from Bio import AlignIO
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    names = ["Q9XYZ1_HUMAN/12-150", "Q9XYZ1_HUMAN/160-300", "P12345_MOUSE/1-90"]
+    _pfam_style_fasta(in_dir / "fam.fasta", names)
+    out_dir = tmp_path / "relaxed"
+    convert_alignment.batch_convert(str(in_dir), str(out_dir),
+                                    in_format="fasta", out_format="phylip-relaxed")
+    aln = AlignIO.read(str(out_dir / "fam.phylip"), "phylip-relaxed")
+    assert [r.id for r in aln] == names
+    # PHYLIP has no '.' gap symbol.
+    assert [str(r.seq) for r in aln] == ["AC-GT-AC", "ACAGT-A-", "AC-GTTAC"]
+
+
+def test_convert_alignment_strict_phylip_refuses_name_clash(tmp_path):
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    _pfam_style_fasta(in_dir / "fam.fasta",
+                      ["Q9XYZ1_HUMAN/12-150", "Q9XYZ1_HUMAN/160-300", "P12345_MOUSE/1-90"])
+    out_dir = tmp_path / "strict"
+    with pytest.raises(SystemExit):
+        convert_alignment.batch_convert(str(in_dir), str(out_dir),
+                                        in_format="fasta", out_format="phylip")
+    assert not any(out_dir.glob("*.phylip*"))
+
+
 # ---------- alignment / mapping ---------------------------------------------
 
 
@@ -204,16 +263,31 @@ def test_delta_to_tab(tmp_path):
     in_dir = _stage(tmp_path, "test.delta")
     out_dir = tmp_path / "out"
     delta_to_tab.batch_convert(str(in_dir), str(out_dir))
-    assert (out_dir / "test.tsv").exists()
+    rows = [r.split("\t") for r in (out_dir / "test.tsv").read_text().splitlines()]
+    assert rows[0] == ["query_name", "query_start", "query_end",
+                       "ref_name", "ref_start", "ref_end", "strand"]
+    # S1 E1 are reference coordinates, S2 E2 query; a high-to-low query
+    # interval is a reverse-strand alignment.
+    assert rows[1] == ["qry1", "1", "100", "ref1", "1", "100", "+"]
+    assert rows[2] == ["qry1", "301", "400", "ref1", "201", "300", "-"]
+    assert len(rows) == 3
 
 
 def test_maf_to_xmfa(tmp_path):
     in_dir = _stage(tmp_path, "test.maf")
     out_dir = tmp_path / "out"
     maf_to_xmfa.batch_convert(str(in_dir), str(out_dir))
-    content = (out_dir / "test.xmfa").read_text()
-    # XMFA must preserve gaps; the fixture contains gapped sequence.
-    assert "=" in content  # block terminator
+    lines = (out_dir / "test.xmfa").read_text().splitlines()
+    assert lines[0] == "#FormatVersion Mauve1"
+    assert "#Sequence3File\tseq3" in lines
+    heads = [l for l in lines if l.startswith(">")]
+    # Mauve headers: index, 1-based forward-strand interval, strand, name.
+    # seq3 is on the minus strand at MAF start 2, size 4, srcSize 10, so
+    # it covers forward positions 5-8.
+    assert heads[:3] == ["> 1:1-4 + seq1", "> 2:1-4 + seq2", "> 3:5-8 - seq3"]
+    assert heads[3:] == ["> 1:5-7 + seq1", "> 2:7-9 + seq2"]
+    assert lines.count("=") == 2
+    assert "AC-TG" in lines  # gaps kept
 
 
 # ---------- VCF family ------------------------------------------------------
@@ -303,6 +377,24 @@ def test_tree_convert_roundtrip(tmp_path):
     assert any(nexus_dir.iterdir())
 
 
+def test_tree_convert_nexus_quotes_and_precision(tmp_path):
+    from Bio import Phylo
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    (in_dir / "t.nwk").write_text("((A/1-2:0.1,B_x:0.2)0.926:0.3,'C D':0.412970504);\n")
+    nexus_dir = tmp_path / "nexus"
+    tree_convert.batch_convert(str(in_dir), str(nexus_dir),
+                               in_format="newick", out_format="nexus")
+    text = (nexus_dir / "t.nexus").read_text()
+    assert "TaxLabels 'A/1-2' B_x 'C D';" in text
+    assert "0.926" in text and "0.412970504" in text
+    back = tmp_path / "back"
+    tree_convert.batch_convert(str(nexus_dir), str(back),
+                               in_format="nexus", out_format="newick")
+    tree = Phylo.read(str(back / "t.newick"), "newick")
+    assert sorted(t.name for t in tree.get_terminals()) == ["A/1-2", "B_x", "C D"]
+
+
 def test_annotate_tree(tmp_path):
     tree_src = FIXTURES / "test_aln.nwk"
     aln_src = FIXTURES / "aln.fasta"
@@ -312,6 +404,29 @@ def test_annotate_tree(tmp_path):
     assert "#NEXUS" in content
     assert "begin trees;" in content
     assert "begin characters;" in content
+
+
+def test_annotate_tree_quotes_pfam_names(tmp_path):
+    from Bio.Nexus import Nexus
+    names = ["Q9XYZ1_HUMAN/12-150", "Q9XYZ1_HUMAN/160-300", "P12345_MOUSE/1-90"]
+    aln = tmp_path / "fam.fasta"
+    aln.write_text("".join(f">{n}\n{r}\n" for n, r in
+                           zip(names, ["MK.LV-W", "MKALV-W", "MK.LVQW"])))
+    tree = tmp_path / "fam.nwk"
+    tree.write_text("('Q9XYZ1_HUMAN/12-150':0.1,'Q9XYZ1_HUMAN/160-300':0.2,"
+                    "'P12345_MOUSE/1-90':0.3);\n")
+    out_file = tmp_path / "fam.nex"
+    annotate_tree.annotate_tree(str(tree), str(aln), str(out_file))
+    text = out_file.read_text()
+    assert "datatype=protein" in text
+    nex = Nexus.Nexus(str(out_file))
+    assert sorted(nex.taxlabels) == sorted(names)
+    assert str(nex.matrix[names[0]]) == "MK-LV-W"
+    from Bio import Phylo
+    # Bio.Phylo keeps the NEXUS quotes on translated names.
+    leaves = sorted(t.name.strip("'") for t in
+                    Phylo.read(str(out_file), "nexus").get_terminals())
+    assert leaves == sorted(names)
 
 
 # ---------- 0.1.4 additions -------------------------------------------------

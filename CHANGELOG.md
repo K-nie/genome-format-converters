@@ -6,6 +6,30 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] — paper-plan engineering pass
 
+### Fixed
+- **`delta-to-tab`** read MUMmer's `S1 E1` (reference) as query
+  coordinates and `S2 E2` (query) as reference, and dropped orientation.
+  Columns now hold the right intervals, and a new `strand` column marks
+  reverse alignments, matching `show-coords`.
+- **`maf-to-xmfa`** wrote `> name:start-end strand`, which is not XMFA, and
+  gave minus-strand MAF starts as if they were forward. Headers now follow
+  Mauve (`> index:start-end strand name`, with `#SequenceNFile` lines) and
+  coordinates are on the forward strand.
+- **`genbank-to-gff3`** wrote a joined location (a spliced or trans-spliced
+  CDS) as one line spanning its introns. It now writes one line per part,
+  sharing an ID, with CDS phases from `/codon_start`. Flag qualifiers get
+  the value `true`; the record becomes one `region` line.
+- **`convert-alignment`** to PHYLIP failed on `.` gaps (as in aligned FASTA
+  made from Stockholm); they are now written as `-`. New
+  `phylip-relaxed` format keeps full names; strict `phylip` refuses input
+  whose names collide when cut to 10 characters, instead of writing
+  duplicate names.
+- **`tree-convert`** to NEXUS and **`annotate-tree`** left names with
+  punctuation (such as Pfam's `NAME/start-end`) unquoted, so NEXUS readers
+  split them. Such names are now single-quoted. Support values are no
+  longer rounded to two decimals, and `annotate-tree` writes
+  `datatype=protein` for protein alignments.
+
 ### Changed
 - **Lazy converter imports.** The CLI imports a converter module only when
   its subcommand runs, and `converters/__init__.py` no longer imports every
@@ -14,6 +38,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   RSS 55 MB -> 19 MB locally). `benchmarks/bench_import.py` measures it.
 
 ### Benchmarks
+- Extended benchmark (`benchmarks/extended/`, cluster phase `extended`):
+  the 24 subcommands outside T1-T8 (E01-E24) on public data, with wall
+  time, peak RSS and four-state verdicts against other tools where one
+  exists (seqkit, EMBOSS, samtools, bedtools, gffread, AGAT, easel,
+  MUMmer, bcftools, plink2, BioConvert) or against the input where none
+  does.
 - The T1/T2 comparators pair records by chrom, position and allele set,
   so split multi-allelic sites (two biallelic records at one position, as in
   1000 Genomes phase 3) are no longer reported as disagreements.
