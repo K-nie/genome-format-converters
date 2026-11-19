@@ -205,7 +205,7 @@ TASKS: List[Task] = [
                "nucmer --version 2>&1 | tail -1", ["show-coords"])],
          reference="show-coords", comparator="delta"),
     Task("E19", "maf-to-xmfa", "MAF -> XMFA", "Comparative genomics & search",
-         "LAST alignment of GRCh37 against GRCh38 chromosome 22, as MAF",
+         "LAST alignment of GRCh37 against a 5 Mb window of GRCh38 chromosome 22 (25-30 Mb), as MAF",
          "gfc maf-to-xmfa --input-dir {IN} --output-dir {OUT} --force",
          [], reference="input", comparator="xmfa"),
     # ------------------------------------------------------------ variants

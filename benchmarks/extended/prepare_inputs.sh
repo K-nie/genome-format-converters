@@ -175,8 +175,42 @@ if ! done_flag E18; then
 fi
 if ! done_flag E19; then
     fresh E19
-    lastdb -P "$threads" -uNEAR "$dl/GRCh38_22.lastdb" "$dl/GRCh38_22.fa"
-    lastal -P "$threads" -m 100 -E 1e-20 "$dl/GRCh38_22.lastdb" "$dl/GRCh37_22.fa" \
+    # A 5 Mb window of GRCh38 chr22 (25-30 Mb by default) against the
+    # GRCh37 sequence around it (500 kb margin each side, since coordinates
+    # shift between the assemblies). The whole chromosome with -m 100 took
+    # too long on the cluster. The GRCh37 window is cut into 1 Mb queries so
+    # that lastal -P actually runs in parallel (it threads over queries),
+    # and tantan masks simple repeats (-R11 -c) so they do not flood the
+    # seeds. Each sequence name records its window, so MAF coordinates map
+    # back to the chromosome by adding the window start.
+    w0="${GFC_EXT_E19_START:-25000001}" w1="${GFC_EXT_E19_END:-30000000}"
+    pad="${GFC_EXT_E19_PAD:-500000}" chunk="${GFC_EXT_E19_CHUNK:-1000000}"
+    python - "$dl/GRCh38_22.fa" "$dl/GRCh37_22.fa" "$dl/E19_target.fa" "$dl/E19_query.fa" \
+        "$w0" "$w1" "$pad" "$chunk" <<'PY'
+import sys
+t_in, q_in, t_out, q_out = sys.argv[1:5]
+w0, w1, pad, chunk = (int(x) for x in sys.argv[5:9])
+def seq(path):
+    with open(path) as fh:
+        return "".join(l.strip() for l in fh if not l.startswith(">"))
+def write(fh, name, s):
+    fh.write(f">{name}\n")
+    for i in range(0, len(s), 60):
+        fh.write(s[i:i + 60] + "\n")
+t = seq(t_in)
+w1 = min(w1, len(t))
+with open(t_out, "w") as fh:
+    write(fh, f"GRCh38_22_{w0}_{w1}", t[w0 - 1:w1])
+q = seq(q_in)
+q0, q1 = max(1, w0 - pad), min(len(q), w1 + pad)
+with open(q_out, "w") as fh:
+    for a in range(q0, q1 + 1, chunk):
+        b = min(a + chunk - 1, q1)
+        write(fh, f"GRCh37_22_{a}_{b}", q[a - 1:b])
+print(f"E19 target GRCh38 {w0}-{w1}, query GRCh37 {q0}-{q1}", file=sys.stderr)
+PY
+    lastdb -P "$threads" -uNEAR -R11 -c "$dl/E19_target.lastdb" "$dl/E19_target.fa"
+    lastal -P "$threads" -E 1e-20 "$dl/E19_target.lastdb" "$dl/E19_query.fa" \
         | last-split -m 1e-5 > "$ext/E19/chr22_GRCh38_vs_GRCh37.maf"
     mark E19
 fi
