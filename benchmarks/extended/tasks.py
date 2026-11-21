@@ -240,7 +240,7 @@ TASKS: List[Task] = [
     Task("E24", "eigenstrat-to-vcf", "EIGENSTRAT -> VCF", "Variants",
          "the E23 sites as EIGENSTRAT (text .geno for gfc, packed .geno for plink2)",
          "gfc eigenstrat-to-vcf --input-dir {IN}/text --output-dir {OUT} --force",
-         [Tool("plink2", loop(".snp", 'plink2 --eigfile {IN}/packed/$s --export vcf --out {OUT}/$s '
+         [Tool("plink2", loop(".snp", '"${GFC_BENCH_PLINK2_EIG:-plink2}" --eigfile {IN}/packed/$s --export vcf --out {OUT}/$s '
                               '--threads 1 --memory 640', src="{IN}/packed"),
                PLINK2_V, ["plink2"])],
          reference="plink2", comparator="vcf_genotypes"),

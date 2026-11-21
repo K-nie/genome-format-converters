@@ -243,7 +243,7 @@ fi
 if ! done_flag E24; then
     fresh E24
     mkdir -p "$ext/E24/packed" "$ext/E24/text"
-    plink2 --vcf "$ext/E23/chr22_100k.vcf.gz" --export eig --out "$ext/E24/packed/chr22_100k" \
+    "${GFC_BENCH_PLINK2_EIG:-plink2}" --vcf "$ext/E23/chr22_100k.vcf.gz" --export eig --out "$ext/E24/packed/chr22_100k" \
         --threads "$threads" --memory 4000 >/dev/null
     rm -f "$ext/E24/packed"/*.log
     # Text EIGENSTRAT with the same content: unpack the 2-bit .geno rows.
