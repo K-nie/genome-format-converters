@@ -235,7 +235,7 @@ if ! done_flag E22; then
 fi
 if ! done_flag E23; then
     fresh E23
-    bcftools view "$vcf" | awk '/^#/ {print; next} n < 100000 {print; n++} n == 100000 {exit}' \
+    bcftools view "$vcf" | awk '/^#/ {print; next} n < 100000 {print; n++}' \
         | bgzip > "$ext/E23/chr22_100k.vcf.gz"
     tabix -p vcf "$ext/E23/chr22_100k.vcf.gz"
     mark E23
