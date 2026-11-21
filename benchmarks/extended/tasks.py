@@ -61,6 +61,7 @@ BC_V = "{BIOCONVERT} --version 2>&1 | tail -1"
 ESL_V = "esl-reformat -h | sed -n 2p"
 BCF_V = "bcftools --version | head -1"
 PLINK2_V = "plink2 --version"
+PLINK2NEW_V = '"${GFC_BENCH_PLINK2_EIG:-plink2}" --version'
 
 
 TASKS: List[Task] = [
@@ -242,7 +243,7 @@ TASKS: List[Task] = [
          "gfc eigenstrat-to-vcf --input-dir {IN}/text --output-dir {OUT} --force",
          [Tool("plink2", loop(".snp", '"${GFC_BENCH_PLINK2_EIG:-plink2}" --eigfile {IN}/packed/$s --export vcf --out {OUT}/$s '
                               '--threads 1 --memory 640', src="{IN}/packed"),
-               PLINK2_V, ["plink2"])],
+               PLINK2NEW_V, ["plink2"])],
          reference="plink2", comparator="vcf_genotypes"),
 ]
 
