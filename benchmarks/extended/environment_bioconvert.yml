@@ -8,4 +8,6 @@ channels:
   - bioconda
 dependencies:
   - python=3.10
-  - bioconvert
+  - bioconvert=1.2.0
+  - gotree           # newick2nexus's only method (E15)
+  - pysam            # fasta_qual2fastq (E04)

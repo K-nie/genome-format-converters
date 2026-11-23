@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -76,6 +77,46 @@ def gfc_version() -> str:
     return (out.stdout.strip().split() or ["", "unknown"])[-1]
 
 
+def _rep1_exit_codes(raw: Path) -> dict:
+    codes = {}
+    with open(raw) as fh:
+        head = fh.readline().rstrip("\n").split("\t")
+        for line in fh:
+            row = dict(zip(head, line.rstrip("\n").split("\t")))
+            if row.get("replicate") == "1":
+                codes[row.get("tool")] = row.get("exit_code", "0")
+    return codes
+
+
+def _last_error(task_id: str, tool: str) -> str:
+    log = Path(os.environ.get("GFC_BENCH_LOG_DIR", "/tmp/gfc_bench_cmd_logs")) / f"{task_id}_{tool}_rep1.err"
+    try:
+        lines = [re.sub(r"\x1b\[[0-9;]*m", "", l).strip() for l in log.read_text(errors="replace").splitlines()]
+    except OSError:
+        return "no stderr log"
+    lines = [l for l in lines if l]
+    return lines[-1][:300] if lines else "no stderr output"
+
+
+def _save_outputs(src: Path, dest: Path, cap_mb: float = 5.0, head_lines: int = 2000) -> None:
+    """Copy a tool's replicate-1 outputs for a verdict that needs a look:
+    small files whole, large ones as their first lines (<name>.head)."""
+    if not src.is_dir():
+        return
+    dest.mkdir(parents=True, exist_ok=True)
+    for f in sorted(src.iterdir())[:5]:
+        if not f.is_file():
+            continue
+        if f.stat().st_size <= cap_mb * 1e6:
+            shutil.copy(f, dest / f.name)
+        else:
+            with open(f, errors="replace") as fi, open(dest / (f.name + ".head"), "w") as fo:
+                for i, line in enumerate(fi):
+                    if i >= head_lines:
+                        break
+                    fo.write(line)
+
+
 def run_task(task: Task, args, raw_dir: Path, verdict_rows: list, task_rows: list) -> None:
     in_dir = Path(args.data) / task.id
     if not (in_dir / ".done").exists():
@@ -119,6 +160,7 @@ def run_task(task: Task, args, raw_dir: Path, verdict_rows: list, task_rows: lis
                       "; ".join(skipped)])
     # ---- verdicts on replicate 1 -------------------------------------------
     cmp = compare_ext.COMPARATORS[task.comparator]
+    exit_codes = _rep1_exit_codes(raw)
     ref_dir = in_dir if task.reference == "input" else work / f"{task.reference}_rep1"
     if task.reference != "input" and task.reference not in ran:
         verdict_rows.append([task.id, task.subcommand, "gfc", task.reference, "limitation", "",
@@ -128,6 +170,11 @@ def run_task(task: Task, args, raw_dir: Path, verdict_rows: list, task_rows: lis
         if name == task.reference:
             verdict_rows.append([task.id, task.subcommand, name, task.reference, "reference", "",
                                  "reference tool"])
+            continue
+        if exit_codes.get(name, "0") not in ("0", ""):
+            verdict_rows.append([task.id, task.subcommand, name, task.reference, "failed", "",
+                                 f"exit {exit_codes[name]}: {_last_error(task.id, name)}"])
+            _save_outputs(work / f"{name}_rep1", Path(args.out) / "outputs" / task.id / name)
             continue
         if task.reference == "input" and name != "gfc" and not task.options.get("compare_others"):
             verdict_rows.append([task.id, task.subcommand, name, "input", "not compared", "",
@@ -141,6 +188,8 @@ def run_task(task: Task, args, raw_dir: Path, verdict_rows: list, task_rows: lis
             v = compare_ext.Verdict("limitation", f"comparator error: {type(exc).__name__}: {exc}")
         verdict_rows.append([task.id, task.subcommand, name, task.reference, v.state,
                              ", ".join(v.conventions), v.reason])
+        if v.state in (compare_ext.DISAGREEMENT, compare_ext.LIMITATION):
+            _save_outputs(work / f"{name}_rep1", Path(args.out) / "outputs" / task.id / name)
         print(f"[verd] {task.id} {name} vs {task.reference}: {v.state} "
               f"{','.join(v.conventions)} ({time.time() - t0:.0f} s) {v.reason[:200]}", file=sys.stderr)
     if not args.keep:

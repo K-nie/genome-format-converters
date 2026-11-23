@@ -172,7 +172,11 @@ def compare_fasta(cand, ref, **_):
 def _read_fastq(p: Path):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
     with _open(p) as fh:
-        return [(t.split()[0] if t.split() else "", t, (s, q)) for t, s, q in FastqGeneralIterator(fh)]
+        try:
+            return [(t.split()[0] if t.split() else "", t, (s, q))
+                    for t, s, q in FastqGeneralIterator(fh)]
+        except ValueError as exc:
+            raise Diff(f"{p.name}: not valid FASTQ ({exc})")
 
 
 def _fastq_pair(c: Path, r: Path, conv: Conv, fixed_quality_ok: str = "", **_) -> str:
@@ -195,18 +199,27 @@ def compare_fastq(cand, ref, **kw):
     return _run(_fastq_pair, cand, ref, [".fastq", ".fq"], **kw)
 
 
+def _qual_values(p: Path, head: str, buf) -> tuple:
+    text = " ".join(buf).split()
+    try:
+        return tuple(int(x) for x in text)
+    except ValueError:
+        raise Diff(f"{p.name}: record {head.split()[0]} has non-numeric quality "
+                   f"{' '.join(text)[:20]!r} (QUAL holds Phred scores as integers)")
+
+
 def _read_qual(p: Path):
     out, head, buf = [], None, []
     with _open(p) as fh:
         for line in fh:
             if line.startswith(">"):
                 if head is not None:
-                    out.append((head.split()[0], head, tuple(int(x) for x in " ".join(buf).split())))
+                    out.append((head.split()[0], head, _qual_values(p, head, buf)))
                 head, buf = line[1:].strip(), []
             elif head is not None:
                 buf.append(line)
     if head is not None:
-        out.append((head.split()[0], head, tuple(int(x) for x in " ".join(buf).split())))
+        out.append((head.split()[0], head, _qual_values(p, head, buf)))
     return out
 
 
@@ -466,7 +479,11 @@ def _genbank_gff3_pair(c: Path, r: Path, conv: Conv, **_) -> str:
     cf, rf = feats(c), feats(r)
     if cf == rf:
         return ""
-    by_type = lambda cnt: Counter({k[1]: n for k, n in cnt.items()})
+    def by_type(cnt):
+        out = Counter()
+        for k, n in cnt.items():
+            out[k[1]] += n
+        return out
     miss, extra = rf - cf, cf - rf
     raise Diff(f"{c.name}: {sum(miss.values())} reference features missing "
                f"(by type {dict(by_type(miss).most_common(4))}), {sum(extra.values())} extra "
@@ -509,11 +526,19 @@ def _genbank_input_pair(c: Path, g: Path, conv: Conv, **_) -> str:
         if n_joined:
             conv.add("joined locations as one line per part")
         return f"{sum(parts.values())} feature parts"
+    gs, ps = {k[0] for k in got}, {k[0] for k in parts}
+    if got and not gs & ps:
+        raise Diff(f"{c.name}: sequence names differ from the GenBank records "
+                   f"(e.g. {sorted(gs)[:2]} vs {sorted(ps)[:2]})")
     if got == spans and n_joined:
         raise Diff(f"{c.name}: {n_joined} joined (spliced) locations written as one line "
                    "spanning their introns")
     miss, extra = parts - got, got - parts
-    by_type = lambda cnt: dict(Counter({k[1]: n for k, n in cnt.items()}).most_common(4))
+    def by_type(cnt):
+        out = Counter()
+        for k, n in cnt.items():
+            out[k[1]] += n
+        return dict(out.most_common(4))
     raise Diff(f"{c.name}: {sum(miss.values())} input feature parts missing (by type "
                f"{by_type(miss)}), {sum(extra.values())} extra (by type {by_type(extra)})")
 
@@ -558,20 +583,31 @@ def _alignment_pair(c: Path, r: Path, conv: Conv, cand_fmt="fasta", ref_fmt="fas
             conv.add("case")
         return t.upper()
     cids, rids = [x[0] for x in cr], [x[0] for x in rr]
-    if cids != rids:
-        if set(cids) == set(rids):
-            conv.add("record-order")
-        elif len(set(cids)) == len(cids) and all(_name_prefix(a, b) for a, b in zip(cids, rids)):
+    dup = len(set(cids)) < len(cids) or len(set(rids)) < len(rids)
+    if all(_name_prefix(x, y) for x, y in zip(cids, rids)):
+        # Rows line up by position. Compare by position, so names that
+        # strict PHYLIP's 10-character cut made identical cannot hide a row.
+        if cids != rids:
             conv.add("name-truncation")
-            if not all(a == b[: len(a)] or b == a[: len(b)] for a, b in zip(cids, rids)):
+            if not all(x == y[: len(x)] or y == x[: len(y)] for x, y in zip(cids, rids)):
                 conv.add("name-character substitution")
-            rr = [(a, a, s) for a, (_, _, s) in zip(cids, rr)]
-        else:
-            raise Diff(f"{c.name}: names differ (e.g. {cids[:2]} vs {rids[:2]})")
-    cm = {k: norm(s) for k, _, s in cr}
-    rm = {k: norm(s) for k, _, s in rr}
-    _compare_maps(cm, rm, c.name, conv, label="row")
-    return ""
+        if len(set(cids)) < len(cids):
+            conv.add("duplicate names after truncation")
+        elif dup:
+            conv.add("reference has duplicate names after truncation")
+        bad = [i for i, (x, y) in enumerate(zip(cr, rr)) if norm(x[2]) != norm(y[2])]
+        if bad:
+            i = bad[0]
+            raise Diff(f"{c.name}: {len(bad)} of {len(rr)} rows differ (first: row {i + 1}, "
+                       f"{cids[i]!r}: {norm(cr[i][2])[:60]!r} vs {norm(rr[i][2])[:60]!r})")
+        return ""
+    if set(cids) == set(rids) and not dup:
+        conv.add("record-order")
+        _compare_maps({k: norm(x) for k, _, x in cr}, {k: norm(x) for k, _, x in rr},
+                      c.name, conv, label="row")
+        return ""
+    i = next(i for i, (x, y) in enumerate(zip(cids, rids)) if not _name_prefix(x, y))
+    raise Diff(f"{c.name}: names differ (first at row {i + 1}: {cids[i]!r} vs {rids[i]!r})")
 
 
 def compare_alignment(cand, ref, cand_fmt="fasta", ref_fmt="fasta", **_):
@@ -846,19 +882,26 @@ def compare_xmfa(cand, ref, input_dir=None, **_):
 
 def _vcf_bed_pair(c: Path, r: Path, conv: Conv, **_) -> str:
     def rows(p):
-        out = Counter()
+        out, ncol = Counter(), set()
         with _open(p) as fh:
             for line in fh:
                 f = line.rstrip("\r\n").split("\t")
                 if len(f) >= 3 and not line.startswith(("#", "track")):
-                    out[(f[0], int(f[1]), int(f[2]))] += 1
-        return out
-    cr, rr = rows(c), rows(r)
+                    try:
+                        out[(f[0], int(f[1]), int(f[2]))] += 1
+                    except ValueError:
+                        raise Diff(f"{p.name}: non-integer coordinates in {line[:60]!r}")
+                    ncol.add(len(f))
+        return out, ncol
+    (cr, cn), (rr, _) = rows(c), rows(r)
     if cr != rr:
         miss, extra = rr - cr, cr - rr
         raise Diff(f"{c.name}: {sum(miss.values())} intervals only in reference (e.g. {list(miss)[:2]}), "
                    f"{sum(extra.values())} only in candidate (e.g. {list(extra)[:2]})")
-    conv.add("name column (ID_ALT against ID)")
+    if cn == {3}:
+        conv.add("BED3 (no name column)")
+    else:
+        conv.add("name column (ID_ALT against ID)")
     return f"{sum(rr.values())} intervals"
 
 

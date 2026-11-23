@@ -58,6 +58,12 @@ GFFREAD_V = "gffread --version 2>&1"
 AGAT_V = ("agat_convert_sp_gff2gtf.pl --help 2>&1 | grep -i 'version' | head -1 "
           "| tr -s ' ' | cut -d':' -f2- | tr -d ' |'")
 BC_V = "{BIOCONVERT} --version 2>&1 | tail -1"
+# BioConvert 1.2.0's command line drops nargs=2 on positional arguments, so
+# its 1-to-2 and 2-to-1 converters reject the second file ("Got unexpected
+# extra argument"). Those two run through its Python API, with the python
+# of the BioConvert env.
+BC_PY = '"$(dirname {BIOCONVERT})/python" -c'
+
 ESL_V = "esl-reformat -h | sed -n 2p"
 BCF_V = "bcftools --version | head -1"
 PLINK2_V = "plink2 --version"
@@ -92,7 +98,8 @@ TASKS: List[Task] = [
          [Tool("py-ref", loop(".fastq", 'python {REFS}/fastq_to_fasta_qual.py "$f" {OUT}/$s'),
                "python -c 'import Bio; print(\"biopython\", Bio.__version__)'"),
           Tool("BioConvert",
-               loop(".fastq", BC + ' fastq2fasta_qual "$f" {OUT}/$s.fasta {OUT}/$s.qual --force'),
+               loop(".fastq", BC_PY + ' "import sys; from bioconvert.fastq2fasta_qual import FASTQ2FASTA_QUAL as C; '
+                    'C(sys.argv[1], sys.argv[2:4])()" "$f" {OUT}/$s.fasta {OUT}/$s.qual'),
                BC_V, [BC])],
          reference="py-ref", comparator="fasta_qual"),
     Task("E04", "fasta-qual-to-fastq", "FASTA + QUAL -> FASTQ", "Sequences & reads",
@@ -101,7 +108,8 @@ TASKS: List[Task] = [
          [Tool("py-ref", loop(".fasta", 'python {REFS}/fasta_qual_to_fastq.py "$f" {IN}/$s.qual {OUT}/$s.fastq'),
                "python -c 'import Bio; print(\"biopython\", Bio.__version__)'"),
           Tool("BioConvert",
-               loop(".fasta", BC + ' fasta_qual2fastq "$f" {IN}/$s.qual {OUT}/$s.fastq --force'),
+               loop(".fasta", BC_PY + ' "import sys; from bioconvert.fasta_qual2fastq import FASTA_QUAL2FASTQ as C; '
+                    'C(sys.argv[1:3], sys.argv[3])()" "$f" {IN}/$s.qual {OUT}/$s.fastq'),
                BC_V, [BC])],
          reference="py-ref", comparator="fastq"),
     Task("E05", "fasta-to-table", "FASTA -> TSV", "Sequences & reads",
@@ -215,7 +223,11 @@ TASKS: List[Task] = [
          "gfc vcf-to-bed --input-dir {IN} --output-dir {OUT} --pattern '*.vcf.gz' --force",
          [Tool("bcftools", loop(".vcf.gz", "bcftools query -f '%CHROM\\t%POS0\\t%END\\t%ID\\n' \"$f\" > {OUT}/$s.bed"),
                BCF_V, ["bcftools"]),
-          Tool("BioConvert", loop(".vcf.gz", BC + ' vcf2bed "$f" {OUT}/$s.bed --force'), BC_V, [BC])],
+          # BioConvert's vcf2bed runs awk on the file as given, so a .vcf.gz
+          # would be read as binary; decompress first (timed).
+          Tool("BioConvert", loop(".vcf.gz", 'gzip -dc "$f" > {OUT}/$s.vcf && ' + BC
+                                  + ' vcf2bed {OUT}/$s.vcf {OUT}/$s.bed --force && rm {OUT}/$s.vcf'),
+               BC_V, [BC])],
          reference="bcftools", comparator="vcf_bed"),
     Task("E21", "vcf-to-table", "VCF -> TSV", "Variants",
          "as E20",
