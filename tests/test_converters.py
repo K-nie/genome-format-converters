@@ -130,6 +130,33 @@ def test_genbank_to_gff3_joined_cds(tmp_path):
     assert "pseudo=true" in cds[0][8]
 
 
+def test_gtf_to_gff3_cds_includes_stop_codon(tmp_path):
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    a = 'gene_id "G{g}"; transcript_id "T{g}";'
+    rows = [
+        ("transcript", 100, 1000, "+", ".", 1), ("exon", 100, 400, "+", ".", 1),
+        ("exon", 600, 1000, "+", ".", 1), ("CDS", 200, 400, "+", "0", 1),
+        ("CDS", 600, 797, "+", "0", 1), ("stop_codon", 798, 800, "+", "0", 1),
+        # Minus strand, stop codon split across the intron: one base after
+        # the last CDS row, two in the next exon.
+        ("transcript", 2000, 3000, "-", ".", 2), ("exon", 2000, 2101, "-", ".", 2),
+        ("exon", 2500, 3000, "-", ".", 2), ("CDS", 2501, 2899, "-", "0", 2),
+        ("stop_codon", 2500, 2500, "-", "0", 2), ("stop_codon", 2100, 2101, "-", "2", 2),
+    ]
+    (in_dir / "x.gtf").write_text("".join(
+        f"22\tens\t{t}\t{s}\t{e}\t.\t{st}\t{ph}\t{a.format(g=g)}\n"
+        for t, s, e, st, ph, g in rows))
+    out_dir = tmp_path / "out"
+    gtf_to_gff3.batch_convert(str(in_dir), str(out_dir))
+    cds = sorted((int(r[3]), int(r[4]), r[7]) for r in
+                 (l.split("\t") for l in (out_dir / "x.gff3").read_text().splitlines())
+                 if len(r) > 2 and r[2] == "CDS")
+    # GFF3 CDS includes the stop codon. 399 + 1 coding bases come before
+    # the split piece, so both of its bases finish that codon: phase 2.
+    assert cds == [(200, 400, "0"), (600, 800, "0"), (2100, 2101, "2"), (2500, 2899, "0")]
+
+
 def test_fasta_gff_to_gbk(tmp_path):
     in_dir = _stage(tmp_path, "tiny.fasta", "tiny.gff3")
     out_dir = tmp_path / "out"

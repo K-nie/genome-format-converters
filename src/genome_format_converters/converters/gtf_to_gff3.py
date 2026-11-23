@@ -7,6 +7,12 @@ annotation format for Ensembl Fungi. It doesn't always emit explicit
 aggregating ``exon`` / ``CDS`` rows by ``gene_id`` / ``transcript_id``.
 GFF3 output uses proper ``ID`` / ``Parent`` attributes so downstream tools
 (IGV, apollo, bcbio-gff, etc.) can reconstruct the hierarchy.
+
+GTF ``CDS`` rows exclude the stop codon, while a GFF3 ``CDS`` includes it
+(Sequence Ontology; Ensembl's GFF3 does the same). Each ``stop_codon``
+piece is therefore added to the CDS it adjoins, or written as its own CDS
+row when a split stop codon reaches into the next exon. The ``stop_codon``
+rows themselves are kept.
 """
 
 import re
@@ -59,6 +65,47 @@ def _iter_gtf_rows(in_file: Path) -> Iterator[Tuple[str, str, str, int, int, str
                 continue
             attrs = _parse_gtf_attrs(attrs_raw)
             yield chrom, source, ftype, start_i, end_i, score, strand, phase, attrs
+
+
+def _merge_stop_codons(rows: List[Tuple]) -> None:
+    """Extend each transcript's CDS over its GTF stop_codon rows, in place."""
+    cds: Dict[str, List[int]] = {}
+    stops: Dict[str, List[Tuple]] = {}
+    for i, r in enumerate(rows):
+        tx = r[8].get("transcript_id")
+        if not tx:
+            continue
+        if r[2] == "CDS":
+            cds.setdefault(tx, []).append(i)
+        elif r[2] == "stop_codon":
+            stops.setdefault(tx, []).append(r)
+    for tx, pieces in stops.items():
+        idx = cds.get(tx)
+        if not idx:
+            continue  # no CDS rows: nothing to extend
+        for (chrom, source, _, s0, s1, score, strand, _, attrs) in pieces:
+            covered = any(rows[i][3] <= s0 and s1 <= rows[i][4] for i in idx)
+            if covered:
+                continue  # this GTF already includes the stop codon in CDS
+            hit = None
+            for i in idx:
+                r = rows[i]
+                if strand == "-" and r[3] == s1 + 1:
+                    hit, new = i, r[:3] + (s0,) + r[4:]
+                elif strand != "-" and r[4] == s0 - 1:
+                    hit, new = i, r[:4] + (s1,) + r[5:]
+                if hit is not None:
+                    rows[hit] = new
+                    break
+            if hit is None:
+                # The rest of a stop codon split across an intron: its own
+                # CDS piece. Its phase is the number of bases still needed
+                # to finish the codon begun by the coding bases before it.
+                cds_attrs = rows[idx[0]][8]
+                before = sum(rows[i][4] - rows[i][3] + 1 for i in idx)
+                rows.append((chrom, source, "CDS", s0, s1, score, strand,
+                             str((3 - before % 3) % 3), cds_attrs))
+                idx.append(len(rows) - 1)
 
 
 def _convert_file(in_file: Path, out_file: Path) -> None:
@@ -134,6 +181,8 @@ def _convert_file(in_file: Path, out_file: Path) -> None:
         child_rows.append(
             (chrom, source, ftype, start_i, end_i, score, strand, phase, attrs)
         )
+
+    _merge_stop_codons(child_rows)
 
     # Pass 2: write GFF3.
     child_id_counter: Dict[str, int] = {}  # per-type unique ID generator

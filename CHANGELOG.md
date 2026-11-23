@@ -7,6 +7,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased] — paper-plan engineering pass
 
 ### Fixed
+- **`gtf-to-gff3`** copied GTF CDS rows as they were, so GFF3 CDS features
+  ended before the stop codon (GTF excludes it; GFF3 and Sequence Ontology
+  include it). Stop codons are now added to the CDS, including stop codons
+  split across an intron.
 - **`delta-to-tab`** read MUMmer's `S1 E1` (reference) as query
   coordinates and `S2 E2` (query) as reference, and dropped orientation.
   Columns now hold the right intervals, and a new `strand` column marks
