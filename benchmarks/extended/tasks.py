@@ -51,7 +51,10 @@ def loop(ext: str, body: str, src: str = "{IN}") -> str:
     return (f'for f in {src}/*{ext}; do s=$(basename "$f" {ext}); {body}; done')
 
 
-BC = "{BIOCONVERT}"
+BC_EXE = "{BIOCONVERT}"
+# Run BioConvert with its env's bin/ first on PATH: methods such as
+# newick2nexus look up helper programs (gotree) on PATH.
+BC = 'PATH="$(dirname {BIOCONVERT}):$PATH" {BIOCONVERT}'
 SEQRET_V = "seqret -version 2>&1 | tail -1"
 SEQKIT_V = "seqkit version"
 GFFREAD_V = "gffread --version 2>&1"
@@ -79,7 +82,7 @@ TASKS: List[Task] = [
                loop(".fasta", 'seqret -sequence "$f" -outseq {OUT}/$s.fastq -osformat2 fastq-sanger -auto'),
                SEQRET_V, ["seqret"]),
           Tool("BioConvert", loop(".fasta", BC + ' fasta2fastq "$f" {OUT}/$s.fastq --force'),
-               BC_V, [BC])],
+               BC_V, [BC_EXE])],
          reference="EMBOSS-seqret", comparator="fastq", options={"fixed_quality_ok": "1"}),
     Task("E02", "fastq-to-fasta", "FASTQ -> FASTA", "Sequences & reads",
          "500,000 simulated 150-bp reads from S. cerevisiae R64 (ART, HiSeq 2500 profile)",
@@ -90,7 +93,7 @@ TASKS: List[Task] = [
                SEQRET_V, ["seqret"]),
           Tool("samtools", loop(".fastq", 'samtools import -0 "$f" | samtools fasta - > {OUT}/$s.fasta'),
                "samtools --version | head -1", ["samtools"]),
-          Tool("BioConvert", loop(".fastq", BC + ' fastq2fasta "$f" {OUT}/$s.fasta --force'), BC_V, [BC])],
+          Tool("BioConvert", loop(".fastq", BC + ' fastq2fasta "$f" {OUT}/$s.fasta --force'), BC_V, [BC_EXE])],
          reference="seqkit", comparator="fasta"),
     Task("E03", "fastq-to-fasta-qual", "FASTQ -> FASTA + QUAL", "Sequences & reads",
          "as E02",
@@ -100,7 +103,7 @@ TASKS: List[Task] = [
           Tool("BioConvert",
                loop(".fastq", BC_PY + ' "import sys; from bioconvert.fastq2fasta_qual import FASTQ2FASTA_QUAL as C; '
                     'C(sys.argv[1], sys.argv[2:4])()" "$f" {OUT}/$s.fasta {OUT}/$s.qual'),
-               BC_V, [BC])],
+               BC_V, [BC_EXE])],
          reference="py-ref", comparator="fasta_qual"),
     Task("E04", "fasta-qual-to-fastq", "FASTA + QUAL -> FASTQ", "Sequences & reads",
          "the E03 reads as a FASTA and a QUAL file",
@@ -110,7 +113,7 @@ TASKS: List[Task] = [
           Tool("BioConvert",
                loop(".fasta", BC_PY + ' "import sys; from bioconvert.fasta_qual2fastq import FASTA_QUAL2FASTQ as C; '
                     'C(sys.argv[1:3], sys.argv[3])()" "$f" {IN}/$s.qual {OUT}/$s.fastq'),
-               BC_V, [BC])],
+               BC_V, [BC_EXE])],
          reference="py-ref", comparator="fastq"),
     Task("E05", "fasta-to-table", "FASTA -> TSV", "Sequences & reads",
          "as E01",
@@ -157,7 +160,7 @@ TASKS: List[Task] = [
     Task("E11", "genbank-to-gff3", "GenBank -> GFF3", "Annotation",
          "NCBI RefSeq GenBank flat file of S. cerevisiae R64 (GCF_000146045.2)",
          "gfc genbank-to-gff3 --input-dir {IN} --output-dir {OUT} --force",
-         [Tool("BioConvert", loop(".gbk", BC + ' genbank2gff3 "$f" {OUT}/$s.gff3 --force'), BC_V, [BC])],
+         [Tool("BioConvert", loop(".gbk", BC + ' genbank2gff3 "$f" {OUT}/$s.gff3 --force'), BC_V, [BC_EXE])],
          reference="input", comparator="genbank_vs_input", options={"compare_others": "1"}),
     # ------------------------------------------------------------ alignments
     Task("E12", "stockholm-to-fasta", "Stockholm -> aligned FASTA", "Alignments",
@@ -170,7 +173,7 @@ TASKS: List[Task] = [
           # BioConvert has no direct route: Stockholm -> Clustal -> FASTA.
           Tool("BioConvert", loop(".sto", BC + ' stockholm2clustal "$f" {OUT}/$s.clw --force && '
                                   + BC + ' clustal2fasta {OUT}/$s.clw {OUT}/$s.fasta --force && rm {OUT}/$s.clw'),
-               BC_V, [BC])],
+               BC_V, [BC_EXE])],
          reference="easel", comparator="alignment", options={"cand_fmt": "fasta", "ref_fmt": "fasta"}),
     Task("E13", "fasta-to-stockholm", "aligned FASTA -> Stockholm", "Alignments",
          "the E12 families as aligned FASTA",
@@ -179,7 +182,7 @@ TASKS: List[Task] = [
           # BioConvert has no direct route: FASTA -> Clustal -> Stockholm.
           Tool("BioConvert", loop(".fasta", BC + ' fasta2clustal "$f" {OUT}/$s.clw --force && '
                                   + BC + ' clustal2stockholm {OUT}/$s.clw {OUT}/$s.sto --force && rm {OUT}/$s.clw'),
-               BC_V, [BC])],
+               BC_V, [BC_EXE])],
          reference="easel", comparator="alignment", options={"cand_fmt": "stockholm", "ref_fmt": "stockholm"}),
     Task("E14", "convert-alignment", "aligned FASTA -> PHYLIP", "Alignments",
          "as E13",
@@ -189,14 +192,14 @@ TASKS: List[Task] = [
                SEQRET_V, ["seqret"]),
           Tool("easel", loop(".fasta", 'esl-reformat phylip "$f" > {OUT}/$s.phylip'), ESL_V,
                ["esl-reformat"]),
-          Tool("BioConvert", loop(".fasta", BC + ' fasta2phylip "$f" {OUT}/$s.phylip --force'), BC_V, [BC])],
+          Tool("BioConvert", loop(".fasta", BC + ' fasta2phylip "$f" {OUT}/$s.phylip --force'), BC_V, [BC_EXE])],
          reference="EMBOSS-seqret", comparator="alignment",
          options={"cand_fmt": "phylip-relaxed", "ref_fmt": "phylip"}),
     # ------------------------------------------------------------ phylogenetics
     Task("E15", "tree-convert", "Newick -> NEXUS", "Phylogenetics",
          "FastTree trees of 200 of the E12 Pfam families",
          "gfc tree-convert --input-dir {IN} --output-dir {OUT} --in-format newick --out-format nexus --force",
-         [Tool("BioConvert", loop(".nwk", BC + ' newick2nexus "$f" {OUT}/$s.nexus --force'), BC_V, [BC])],
+         [Tool("BioConvert", loop(".nwk", BC + ' newick2nexus "$f" {OUT}/$s.nexus --force'), BC_V, [BC_EXE])],
          reference="input", comparator="tree_vs_input", options={"compare_others": "1"}),
     Task("E16", "annotate-tree", "Newick + alignment -> NEXUS", "Phylogenetics",
          "the E15 trees with their aligned FASTA",
@@ -227,7 +230,7 @@ TASKS: List[Task] = [
           # would be read as binary; decompress first (timed).
           Tool("BioConvert", loop(".vcf.gz", 'gzip -dc "$f" > {OUT}/$s.vcf && ' + BC
                                   + ' vcf2bed {OUT}/$s.vcf {OUT}/$s.bed --force && rm {OUT}/$s.vcf'),
-               BC_V, [BC])],
+               BC_V, [BC_EXE])],
          reference="bcftools", comparator="vcf_bed"),
     Task("E21", "vcf-to-table", "VCF -> TSV", "Variants",
          "as E20",

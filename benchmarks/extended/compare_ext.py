@@ -516,7 +516,13 @@ def _genbank_input_pair(c: Path, g: Path, conv: Conv, **_) -> str:
                 spans[(rec.id, f.type, int(f.location.start) + 1, int(f.location.end),
                        st.get(f.location.strand, "."))] += 1
     got = Counter()
+    # Accession without its version (NC_001133 for NC_001133.9) is a
+    # naming convention, not a content difference.
+    bare = {k.rsplit(".", 1)[0]: k for k in lengths if "." in k}
     for f in _gff_lines(c):
+        if f[0] not in lengths and f[0] in bare:
+            conv.add("accession without version")
+            f[0] = bare[f[0]]
         key = (f[0], f[2], int(f[3]), int(f[4]), f[6])
         if f[2] in _RECORD_TYPES and key[2] == 1 and key[3] == lengths.get(f[0]):
             conv.add("record-level line")
