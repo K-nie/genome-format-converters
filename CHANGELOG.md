@@ -32,7 +32,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   punctuation (such as Pfam's `NAME/start-end`) unquoted, so NEXUS readers
   split them. Such names are now single-quoted. Support values are no
   longer rounded to two decimals, and `annotate-tree` writes
-  `datatype=protein` for protein alignments.
+  `datatype=protein` for protein alignments. It writes selenocysteine (`U`), which
+  NEXUS protein data lacks, as `X` with a warning.
 
 ### Changed
 - **Lazy converter imports.** The CLI imports a converter module only when
