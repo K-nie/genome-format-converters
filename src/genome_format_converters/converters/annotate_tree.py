@@ -10,7 +10,8 @@ don't see their input mutated.
 Taxon names that NEXUS would read as punctuation or whitespace (for
 example Pfam's `NAME/start-end`) are written in single quotes, and the
 character block's datatype is `dna` or `protein` from the alignment's
-residues.
+residues. NEXUS has no symbol for selenocysteine, so in a protein matrix
+`U` is written as `X` (unknown residue), with a warning giving the count.
 """
 
 import copy
@@ -66,6 +67,12 @@ def annotate_tree(tree_file: str, aln_file: str, out_file: str) -> None:
     newick = buf.getvalue().strip()
     residues = set("".join(seq_dict.values()).upper())
     datatype = "dna" if residues <= _NUCLEOTIDES else "protein"
+    if datatype == "protein":
+        n_sec = sum(seq.upper().count("U") for seq in seq_dict.values())
+        if n_sec:
+            seq_dict = {k: v.replace("U", "X").replace("u", "x") for k, v in seq_dict.items()}
+            log_warn(f"{Path(aln_file).name}: wrote {n_sec} selenocysteine (U) "
+                     "residue(s) as X, since NEXUS protein data has no U")
 
     out_path = Path(out_file)
     out_path.parent.mkdir(parents=True, exist_ok=True)

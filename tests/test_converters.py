@@ -422,6 +422,18 @@ def test_tree_convert_nexus_quotes_and_precision(tmp_path):
     assert sorted(t.name for t in tree.get_terminals()) == ["A/1-2", "B_x", "C D"]
 
 
+def test_annotate_tree_selenocysteine_as_x(tmp_path):
+    from Bio.Nexus import Nexus
+    aln = tmp_path / "sec.fasta"
+    aln.write_text(">a\nMKUL-W\n>b\nMKCL-W\n>c\nMKCLQW\n")
+    tree = tmp_path / "sec.nwk"
+    tree.write_text("(a:0.1,b:0.2,c:0.3);\n")
+    out_file = tmp_path / "sec.nex"
+    annotate_tree.annotate_tree(str(tree), str(aln), str(out_file))
+    nex = Nexus.Nexus(str(out_file))  # Bio.Nexus rejects U in protein data
+    assert str(nex.matrix["a"]) == "MKXL-W"
+
+
 def test_annotate_tree(tmp_path):
     tree_src = FIXTURES / "test_aln.nwk"
     aln_src = FIXTURES / "aln.fasta"

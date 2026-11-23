@@ -660,7 +660,7 @@ def compare_annotated_tree(cand, ref, input_dir=None, **_):
     """gfc NEXUS against the input tree and alignment: same taxa, every
     matrix row equal to the alignment row, same tree."""
     from Bio.Nexus import Nexus
-    gap_conv = False
+    gap_conv = sec_conv = False
     conv = Conv()
     pairs, v = _pairs(cand, ref, [".nex"], [".nwk"])
     if v:
@@ -680,6 +680,8 @@ def compare_annotated_tree(cand, ref, input_dir=None, **_):
         if any("." in aln[k] for k in aln):
             gap_conv = True
         bad = [k for k in aln if norm(mat[k]) != norm(aln[k])]
+        if bad and all(norm(mat[k]) == norm(aln[k]).replace("U", "X") for k in aln):
+            sec_conv, bad = True, []
         if bad:
             return Verdict(DISAGREEMENT, f"{c.name}: {len(bad)} matrix rows differ from the "
                            f"alignment (first {bad[0]})")
@@ -693,7 +695,8 @@ def compare_annotated_tree(cand, ref, input_dir=None, **_):
         if why:
             return Verdict(DISAGREEMENT, f"{c.name}: tree differs from the input tree: {why}")
     return Verdict(STRUCTURAL, "checked against the input tree and alignment",
-                   ["taxon translate table"] + (["gap-character"] if gap_conv else []) + conv.used)
+                   ["taxon translate table"] + (["gap-character"] if gap_conv else [])
+                   + (["selenocysteine as X"] if sec_conv else []) + conv.used)
 
 
 # ------------------------------------------------------------- comparative genomics

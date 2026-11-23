@@ -205,8 +205,12 @@ case "$phase" in
         done
         GFC_BENCH_PREP_THREADS="${GFC_BENCH_PREP_THREADS:-4}" \
             bash "$bench/extended/prepare_inputs.sh"
+        # GFC_EXT_TASKS="E07 E16" reruns only those tasks; give it its own
+        # GFC_EXT_OUT so the full run's summaries are not overwritten.
+        # shellcheck disable=SC2086
         python "$bench/extended/run_extended.py" --reps "${GFC_BENCH_REPLICATES:-10}" \
-            --out "$dest" --tmp "$GFC_BENCH_TMP/extended"
+            ${GFC_EXT_TASKS:+--tasks $GFC_EXT_TASKS} \
+            --out "${GFC_EXT_OUT:-$dest}" --tmp "$GFC_BENCH_TMP/extended"
         ;;
     *)
         echo "[err ] unknown phase $phase" >&2; exit 2 ;;
