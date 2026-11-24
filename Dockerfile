@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for genome-format-converters.
-# Build:   docker build -t gfc:0.1.3 .
-# Run:     docker run --rm -v $(pwd):/data gfc:0.1.3 gfc <subcommand> ...
+# Build:   docker build -t gfc:0.2.0 .
+# Run:     docker run --rm -v $(pwd):/data gfc:0.2.0 gfc <subcommand> ...
 
 FROM python:3.11-slim AS build
 
