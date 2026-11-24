@@ -25,7 +25,7 @@ def get_banner(version: str = __version__) -> str:
     return (
         f"{_BLOCK}\n\n"
         f"   genome-format-converters v{version}\n"
-        f"   Uniform CLI for 30 bioinformatics file-format conversions.\n"
+        f"   Uniform CLI for 32 bioinformatics file-format conversions.\n"
         f"   Benjamin Narh-Madey · Hittinger Lab · UW-Madison\n"
         f"   https://github.com/K-nie/genome-format-converters\n"
     )

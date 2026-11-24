@@ -4,7 +4,12 @@ All notable changes to this project are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — paper-plan engineering pass
+## [0.2.0] — 2026-11-24
+
+This is the release described in the G3 paper. It combines the two
+sections below.
+
+### Paper-plan engineering pass
 
 ### Fixed
 - **`gtf-to-gff3`** copied GTF CDS rows as they were, so GFF3 CDS features
@@ -94,7 +99,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   processes (previously it only printed a warning). Output is identical
   to a sequential run.
 
-## [Unreleased] — Stage 1 benchmark + manuscript
+### Stage 1 benchmark + manuscript
 
 ### Added
 - **Stage 1 benchmark suite** (`benchmarks/`) covering 8 head-to-head

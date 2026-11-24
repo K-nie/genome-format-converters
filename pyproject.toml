@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genome-format-converters"
-version = "0.1.5"
+version = "0.2.0"
 description = "A uniform command-line toolkit for converting common bioinformatics file formats (GFF3, GTF, BED, GenBank, FASTA, FASTQ, QUAL, BAM, VCF, MAF, MUMmer delta, EIGENSTRAT, phylogenetic trees)."
 readme = "README.md"
 authors = [

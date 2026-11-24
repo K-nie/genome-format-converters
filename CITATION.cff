@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "genome-format-converters: a uniform command-line toolkit for common bioinformatics file formats"
-version: "0.1.5"
-date-released: "2026-04-24"
+title: "gfc: a dependency-light command-line toolkit for cross-domain genome file conversion"
+version: "0.2.0"
+date-released: "2026-11-24"
 authors:
   - family-names: "Narh-Madey"
     given-names: "Benjamin"
