@@ -1,8 +1,11 @@
 # Genome Format Converters
 
-**Author:** Benjamin Narh-Madey
-**Affiliation:** Hittinger Lab, Laboratory of Genetics, University of Wisconsin-Madison
-**Contact:** narhmadey@wisc.edu
+**Authors:** Benjamin Narh-Madey<sup>1</sup>, Chris Todd Hittinger<sup>1</sup> and Antonis Rokas<sup>2</sup>
+
+<sup>1</sup> Laboratory of Genetics, Wisconsin Energy Institute, J.F. Crow Institute for the Study of Evolution, University of Wisconsin-Madison, Madison, WI, USA<br>
+<sup>2</sup> Department of Biological Sciences, Vanderbilt University, Nashville, TN, USA
+
+**Maintainer and contact:** Benjamin Narh-Madey (narhmadey@wisc.edu)
 
 ![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Version 0.2.0](https://img.shields.io/badge/version-0.2.0-green.svg)
